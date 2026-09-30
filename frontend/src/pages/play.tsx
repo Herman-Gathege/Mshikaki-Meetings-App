@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -60,6 +60,18 @@ function StartGameModal({ open, onClose }: { open: boolean; onClose: () => void 
   const lifecycle = useSessionLifecycle(sessionId);
   const navigate = useNavigate();
 
+  const chosenGame = (games.data?.items ?? []).find((game) => game.key === gameKey);
+  const packsForGame = (packs.data?.items ?? []).filter((pack) => pack.game_key === gameKey);
+  // A host-judged activity is run by the host alone; everything else needs the
+  // questions that only a content pack provides.
+  const packRequired = Boolean(chosenGame) && chosenGame?.family !== "host_scored";
+
+  // Choose the obvious pack as soon as a game is picked, so "no pack" stops being
+  // the accidental default.
+  useEffect(() => {
+    setPackId(packsForGame[0]?.id ?? "");
+  }, [gameKey, packsForGame.length]);
+
   // A meeting that has been planned but not started is the common case, so it
   // belongs in this list. Live sessions sort first.
   const ORDER: Record<string, number> = { active: 0, paused: 1, planned: 2 };
@@ -119,19 +131,32 @@ function StartGameModal({ open, onClose }: { open: boolean; onClose: () => void 
         </Field>
         <Field label="Content pack">
           <Select value={packId} onChange={(event) => setPackId(event.target.value)}>
-            <option value="">No pack (host runs it)</option>
-            {(packs.data?.items ?? [])
-              .filter((pack) => !gameKey || pack.game_key === gameKey)
-              .map((pack) => (
-                <option key={pack.id} value={pack.id}>
-                  {pack.title} ({pack.items})
-                </option>
-              ))}
+            {packRequired ? (
+              <option value="">Pick a pack</option>
+            ) : (
+              <option value="">No pack (host runs it and enters scores)</option>
+            )}
+            {packsForGame.map((pack) => (
+              <option key={pack.id} value={pack.id}>
+                {pack.title} · {pack.items} items
+              </option>
+            ))}
           </Select>
         </Field>
+        {packRequired && !packId ? (
+          <p className="text-sm text-red-700">
+            This game asks questions, so it needs a pack to ask them from.
+          </p>
+        ) : null}
+        {packId ? (
+          <p className="text-xs text-ink-600">
+            The questions come from this pack. The host reads each one aloud and taps whoever
+            answers correctly.
+          </p>
+        ) : null}
         <Button
           size="lg"
-          disabled={!sessionId || !gameKey || start.isPending}
+          disabled={!sessionId || !gameKey || (packRequired && !packId) || start.isPending}
           onClick={() =>
             void start
               .mutateAsync({ game_key: gameKey, content_pack_id: packId || undefined })
@@ -160,7 +185,30 @@ export function GamePlayPage() {
   if (!play.data) return null;
   const data = play.data;
 
-  if (!data.game.key) return <EmptyState title="No game" />;
+  // A quiz with no questions is a dead end, and it is what happens when a play is
+  // started without a content pack. Say so plainly rather than showing an empty card.
+  if (data.total === 0 && data.game.family !== "host_scored") {
+    return (
+      <div className="mx-auto max-w-2xl p-6">
+        <PageHeader title={data.game.name} subtitle="This game has no questions loaded" />
+        <EmptyState
+          title="No content pack was chosen"
+          body="Quiz and prompt games read their questions from a content pack. Start the game again and pick a pack, and the questions will appear here one at a time."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link to="/play">
+                <Button size="lg">Start a game with a pack</Button>
+              </Link>
+              <Button variant="outline" onClick={() => void actions.finish.mutateAsync()}>
+                Finish this one without scoring
+              </Button>
+            </div>
+          }
+        />
+        <p className="mt-4 text-center text-sm text-ink-600">{data.game.how_to_play}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-ink-900 px-4 py-6 text-white">

@@ -16,13 +16,28 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import health
+from app.api import (
+    auth,
+    bragging,
+    comments,
+    decisions,
+    games,
+    health,
+    ideas,
+    projects,
+    record,
+    sessions,
+    tasks,
+    team,
+    today,
+)
 from app.config import Settings, get_settings
-from app.errors import register_error_handlers
+from app.deps import CSRF_HEADER
+from app.errors import error_body, register_error_handlers
 from app.logging_setup import configure_logging
 
 logger = logging.getLogger("mshikaki")
@@ -47,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_error_handlers(app)
+    add_csrf_guard(app)
 
     if settings.is_development:
         # Only the Vite dev server needs this. Production is same-origin.
@@ -58,10 +74,46 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["*"],
         )
 
-    app.include_router(health.router, prefix=API_PREFIX)
+    for router in (
+        health.router,
+        auth.router,
+        team.router,
+        sessions.router,
+        today.router,
+        ideas.router,
+        decisions.router,
+        tasks.router,
+        projects.router,
+        comments.router,
+        games.router,
+        bragging.router,
+        record.router,
+    ):
+        app.include_router(router, prefix=API_PREFIX)
 
     mount_spa(app, settings)
     return app
+
+
+def add_csrf_guard(app: FastAPI) -> None:
+    """Cookie auth needs protection against cross-site writes.
+
+    SameSite=Lax blocks the common cases; this header requirement closes the rest,
+    because a browser will not attach a custom header to a cross-origin request
+    without a CORS preflight, and production allows no CORS origins. One guard here
+    is harder to forget than a dependency on forty routes.
+    """
+
+    @app.middleware("http")
+    async def csrf_guard(request, call_next):
+        mutating = request.method not in {"GET", "HEAD", "OPTIONS"}
+        protected = mutating and request.url.path.startswith(API_PREFIX)
+        if protected and request.headers.get(CSRF_HEADER) is None:
+            return JSONResponse(
+                status_code=403,
+                content=error_body("request.untrusted", "Missing request header."),
+            )
+        return await call_next(request)
 
 
 def mount_spa(app: FastAPI, settings: Settings) -> None:

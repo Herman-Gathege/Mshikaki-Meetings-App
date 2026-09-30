@@ -1,0 +1,29 @@
+{
+  "key": "true-false-01",
+  "game_key": "true-false",
+  "title": "True or False - Volume 1",
+  "description": "Everyone votes at once, so nobody has to be brave.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "Mount Kilimanjaro is in Kenya.", "answer": "False - it is in Tanzania", "category": "geography", "difficulty": "easy" },
+    { "prompt": "The equator passes through Kenya.", "answer": "True", "category": "geography", "difficulty": "easy" },
+    { "prompt": "Lake Victoria is the largest lake in Africa by surface area.", "answer": "True", "category": "geography", "difficulty": "medium" },
+    { "prompt": "The Great Wall of China is visible from the Moon with the naked eye.", "answer": "False", "category": "science", "difficulty": "easy" },
+    { "prompt": "An octopus has three hearts.", "answer": "True", "category": "nature", "difficulty": "medium" },
+    { "prompt": "Bats are completely blind.", "answer": "False - they can see, they just also use echolocation", "category": "nature", "difficulty": "medium" },
+    { "prompt": "Lightning never strikes the same place twice.", "answer": "False", "category": "science", "difficulty": "easy" },
+    { "prompt": "Honey can last for years without spoiling.", "answer": "True", "category": "food", "difficulty": "medium" },
+    { "prompt": "The Sahara is the largest desert in the world.", "answer": "False - Antarctica is, by area", "category": "geography", "difficulty": "hard" },
+    { "prompt": "A group of flamingos is called a flamboyance.", "answer": "True", "category": "nature", "difficulty": "medium" },
+    { "prompt": "Sound travels faster in water than in air.", "answer": "True", "category": "science", "difficulty": "medium" },
+    { "prompt": "An adult human has 206 bones.", "answer": "True", "category": "science", "difficulty": "medium" },
+    { "prompt": "A tomato is a fruit.", "answer": "True - botanically", "category": "food", "difficulty": "easy" },
+    { "prompt": "Venus is the hottest planet in our solar system.", "answer": "True", "category": "science", "difficulty": "medium" },
+    { "prompt": "Goldfish only remember things for three seconds.", "answer": "False - that is a myth", "category": "nature", "difficulty": "easy" },
+    { "prompt": "Water boils at 100 degrees Celsius at sea level.", "answer": "True", "category": "science", "difficulty": "easy" },
+    { "prompt": "There are more than 4,000 species of mosquito.", "answer": "True - over 3,500 described", "category": "nature", "difficulty": "hard" },
+    { "prompt": "Kenya's national tree is the mugumo fig tree.", "answer": "True", "category": "culture", "difficulty": "medium" }
+  ]
+}

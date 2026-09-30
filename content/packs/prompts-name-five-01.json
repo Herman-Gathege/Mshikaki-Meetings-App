@@ -1,0 +1,26 @@
+{
+  "key": "name-five-01",
+  "game_key": "prompts-name-five",
+  "title": "Name 5 Things - Kenya Edition",
+  "description": "Ten seconds, five answers. Count out loud so everyone feels the pressure.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "Name 5 Kenyan counties in 10 seconds." },
+    { "prompt": "Name 5 African countries." },
+    { "prompt": "Name 5 Kenyan athletes." },
+    { "prompt": "Name 5 Kenyan lakes." },
+    { "prompt": "Name 5 mobile money apps or services." },
+    { "prompt": "Name 5 Kenyan musicians or bands." },
+    { "prompt": "Name 5 football clubs people support here." },
+    { "prompt": "Name 5 flavours of crisps." },
+    { "prompt": "Name 5 things you would find in a Kenyan kitchen." },
+    { "prompt": "Name 5 Kiswahili words you use every day." },
+    { "prompt": "Name 5 things that are always in a matatu." },
+    { "prompt": "Name 5 ways to say hello in different languages." },
+    { "prompt": "Name 5 yellow things." },
+    { "prompt": "Name 5 things you do before 9am." },
+    { "prompt": "Name 5 Kenyan towns along the coast." }
+  ]
+}

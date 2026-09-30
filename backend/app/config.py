@@ -61,6 +61,8 @@ class Settings(BaseSettings):
 
     # Where the built SPA lives in the production image.
     static_dir: Path = Field(default=Path(__file__).resolve().parent.parent / "static")
+    # Game content packs. In the image this is set explicitly to /app/content/packs.
+    content_dir: Path = Field(default=Path(__file__).resolve().parents[2] / "content" / "packs")
 
     @field_validator("log_level")
     @classmethod

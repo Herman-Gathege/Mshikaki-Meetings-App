@@ -1,0 +1,26 @@
+{
+  "key": "emoji-guess-01",
+  "game_key": "emoji-guess",
+  "title": "Emoji Guess - Volume 1",
+  "description": "Show the emoji, take guesses, first correct answer takes the point.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "🐝 🎵", "answer": "Beyonce", "category": "music", "difficulty": "medium" },
+    { "prompt": "🦁 👑 🎬", "answer": "The Lion King", "category": "film", "difficulty": "easy" },
+    { "prompt": "🏃 💨 ⚡", "answer": "Usain Bolt", "category": "sport", "difficulty": "medium" },
+    { "prompt": "🐜 🦸", "answer": "Ant-Man", "category": "film", "difficulty": "medium" },
+    { "prompt": "🍫 🏭 🎩", "answer": "Charlie and the Chocolate Factory", "category": "film", "difficulty": "medium" },
+    { "prompt": "🐍 ➕ 🪜", "answer": "Snakes and Ladders", "category": "games", "difficulty": "easy" },
+    { "prompt": "🐟 🍟", "answer": "Fish and chips", "category": "food", "difficulty": "easy" },
+    { "prompt": "🕷️ 🕸️ 🦸", "answer": "Spider-Man", "category": "film", "difficulty": "easy" },
+    { "prompt": "⚽ 🏆 🌍", "answer": "The World Cup", "category": "sport", "difficulty": "easy" },
+    { "prompt": "🍍 🏝️", "answer": "Pineapple (or a tropical island)", "category": "food", "difficulty": "easy" },
+    { "prompt": "💬 📱 ✅", "answer": "WhatsApp", "category": "tech", "difficulty": "easy" },
+    { "prompt": "🧊 🏒", "answer": "Ice hockey", "category": "sport", "difficulty": "medium" },
+    { "prompt": "☀️ 🌻 🌱", "answer": "Sunflower", "category": "nature", "difficulty": "easy" },
+    { "prompt": "🐘 🦓 🦁 🌍", "answer": "Safari, or the Maasai Mara", "category": "kenya", "difficulty": "easy" },
+    { "prompt": "🎩 🐇 ✨", "answer": "A magic trick (or a magician)", "category": "general", "difficulty": "medium" }
+  ]
+}

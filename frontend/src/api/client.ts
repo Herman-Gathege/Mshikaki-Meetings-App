@@ -17,21 +17,39 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
   }
+
+  get needsSignIn(): boolean {
+    return this.status === 401;
+  }
 }
 
 type ApiErrorBody = {
   error?: { code?: string; message?: string; details?: Record<string, unknown> };
 };
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    ...init,
+const CSRF_HEADER = "X-Mshikaki-Request";
+
+/** The backend rejects any write without this header. See docs/standards.md. */
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit & { json?: unknown } = {},
+): Promise<T> {
+  const { json, ...rest } = options;
+
+  const init: RequestInit = {
+    ...rest,
     credentials: "same-origin",
     headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
+      [CSRF_HEADER]: "1",
+      ...(json === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(rest.headers ?? {}),
     },
-  });
+  };
+  if (json !== undefined) {
+    init.body = JSON.stringify(json);
+  }
+
+  const response = await fetch(`/api${path}`, init);
 
   if (response.status === 204) {
     return undefined as T;
@@ -50,4 +68,13 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   return body as T;
+}
+
+/** For the plain-text summary export, which is not JSON. */
+export async function apiFetchText(path: string): Promise<string> {
+  const response = await fetch(`/api${path}`, { credentials: "same-origin" });
+  if (!response.ok) {
+    throw new ApiError(response.status, "export.failed", "Could not load the export.", {});
+  }
+  return response.text();
 }

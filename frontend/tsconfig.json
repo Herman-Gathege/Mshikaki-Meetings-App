@@ -12,7 +12,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
 
     "isolatedModules": true,
     "verbatimModuleSyntax": true,

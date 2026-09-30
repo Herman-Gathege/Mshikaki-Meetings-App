@@ -40,6 +40,11 @@ RUN apt-get update \
 COPY backend/ ./
 RUN python -m pip install --upgrade pip && python -m pip install .
 
+# Game content is a product asset, not backend code, but the image needs it: the
+# seeder reads these files at start-up.
+COPY content/ ./content/
+ENV CONTENT_DIR=/app/content/packs
+
 COPY --from=web /web/dist ./static
 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser \

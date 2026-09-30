@@ -1,0 +1,29 @@
+{
+  "key": "rapid-fire-01",
+  "game_key": "prompts-rapid-fire",
+  "title": "Rapid Fire - Round 1",
+  "description": "One-line prompts. Anyone can answer, nobody has to be clever.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "Name three things you would grab if the office caught fire." },
+    { "prompt": "Name three apps you have already opened today." },
+    { "prompt": "Name three Kenyan brands you would defend in an argument." },
+    { "prompt": "Name three things in your pockets or bag right now." },
+    { "prompt": "Name three words your friends would use to describe you." },
+    { "prompt": "Name three songs for a Nairobi-to-Mombasa road trip." },
+    { "prompt": "Name three Kenyan roads you would avoid at 5pm." },
+    { "prompt": "Name three things you would find in an ICT office at 8am." },
+    { "prompt": "Name three ways to spend a Sunday in Nairobi." },
+    { "prompt": "Name three Kenyan foods you can actually cook." },
+    { "prompt": "Name three things you would tell your 18-year-old self." },
+    { "prompt": "Name three things on your desk that are not work-related." },
+    { "prompt": "Name three Kenyan radio stations." },
+    { "prompt": "Name three phone brands people argue about." },
+    { "prompt": "Name three things that always run late in Kenya." },
+    { "prompt": "Name three chores you would happily pay someone to do." },
+    { "prompt": "Name three things you learned from a YouTube video." },
+    { "prompt": "Name three sounds you hear from your office window." }
+  ]
+}

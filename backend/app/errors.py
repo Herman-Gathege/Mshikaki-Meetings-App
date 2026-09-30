@@ -23,9 +23,15 @@ class AppError(Exception):
     status_code = status.HTTP_400_BAD_REQUEST
     message = "Something went wrong."
 
-    def __init__(self, message: str | None = None, **details: Any) -> None:
+    def __init__(
+        self, message: str | None = None, *, code: str | None = None, **details: Any
+    ) -> None:
         super().__init__(message or self.message)
         self.message = message or self.message
+        # A per-instance code wins over the class default, so `AppError(..., code=...)`
+        # behaves the way every caller expects.
+        if code is not None:
+            self.code = code
         self.details = details
 
 

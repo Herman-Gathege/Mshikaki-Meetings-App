@@ -1,23 +1,154 @@
-"""Shared FastAPI dependencies.
+"""Shared FastAPI dependencies: the database handle, the caller, and access checks.
 
-Phase 0 has only the database handle and the settings accessor. Current-user and
-`require_capability` dependencies arrive in Phase 1 and will live here too, so
-every router has one obvious place to look for them.
+Everything a router needs to answer "who is asking, and may they?" lives here, so
+there is exactly one place to audit.
 """
 
 from __future__ import annotations
 
-from typing import Annotated
+from collections.abc import Iterator
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
-from fastapi import Depends
+from fastapi import Cookie, Depends, status
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session as DbSession
 
-from app.config import Settings, get_settings
-from app.db.session import get_engine
+from app.config import get_settings
+from app.db.models import AuthSession, Membership, Team, User
+from app.db.session import get_engine, get_session_factory
+from app.domain.enums import MembershipStatus, TeamRole
+from app.domain.permissions import Actor, Resource, can
+from app.errors import AppError, PermissionDeniedError
+
+SESSION_COOKIE = "mshikaki_session"
+# A custom header required on every mutation. Browsers will not send a custom
+# header cross-site without a CORS preflight, which we never allow in production.
+CSRF_HEADER = "x-mshikaki-request"
+
+
+class NotAuthenticatedError(AppError):
+    code = "auth.required"
+    status_code = status.HTTP_401_UNAUTHORIZED
+    message = "Sign in to continue."
+
+
+def get_db() -> Iterator[DbSession]:
+    """One transaction per request: commit on success, roll back on any exception.
+
+    Routers therefore never call commit themselves, and a request that fails
+    halfway cannot leave a partial change or a dangling activity row.
+    """
+    session = get_session_factory()()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def get_db_engine() -> Engine:
     return get_engine()
 
 
-SettingsDep = Annotated[Settings, Depends(get_settings)]
+DbDep = Depends(get_db)
+
+
+@dataclass
+class RequestContext:
+    """Who is calling, and which team they are acting in."""
+
+    user: User
+    membership: Membership
+    team: Team
+    auth_session: AuthSession
+
+    @property
+    def actor(self) -> Actor:
+        return Actor(role=self.membership.role, team_id=self.team.id, user_id=self.user.id)
+
+    @property
+    def name(self) -> str:
+        return self.user.display_name
+
+    def resource(self, **kwargs) -> Resource:
+        return Resource(team_id=self.team.id, **kwargs)
+
+
+def get_context(
+    db: DbSession = DbDep,  # type: ignore[assignment]
+    token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> RequestContext:
+    if not token:
+        raise NotAuthenticatedError()
+
+    from app.security import hash_token
+
+    auth = db.execute(
+        select(AuthSession).where(
+            AuthSession.token_hash == hash_token(token),
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > datetime.now(timezone.utc),
+        )
+    ).scalar_one_or_none()
+    if auth is None:
+        raise NotAuthenticatedError("Your session has expired. Sign in again.")
+
+    user = db.get(User, auth.user_id)
+    if user is None or user.deleted_at is not None:
+        raise NotAuthenticatedError("This account is no longer active.")
+
+    membership = (
+        db.execute(
+            select(Membership)
+            .where(
+                Membership.user_id == user.id,
+                Membership.status == MembershipStatus.ACTIVE.value,
+            )
+            .order_by(Membership.joined_at)
+        )
+        .scalars()
+        .first()
+    )
+    if membership is None:
+        raise AppError("You are not a member of any team yet.", code="team.missing")
+
+    team = db.get(Team, membership.team_id)
+    if team is None or team.deleted_at is not None:
+        raise AppError("That team no longer exists.", code="team.missing")
+
+    user.last_seen_at = datetime.now(timezone.utc)
+    db.flush()
+    return RequestContext(user=user, membership=membership, team=team, auth_session=auth)
+
+
+ContextDep = Depends(get_context)
+
+
+def require_capability(capability: str):
+    """Dependency factory for team-level capabilities."""
+
+    def dependency(context: RequestContext = ContextDep) -> RequestContext:  # type: ignore[assignment]
+        if not can(context.actor, capability, Resource(team_id=context.team.id)):
+            raise PermissionDeniedError()
+        return context
+
+    return Depends(dependency)
+
+
+def ensure_can(actor: Actor, capability: str, resource: Resource | None = None) -> None:
+    """For entity-level decisions, where the caller has loaded the target already."""
+    if not can(actor, capability, resource):
+        raise PermissionDeniedError()
+
+
+def is_owner(context: RequestContext) -> bool:
+    return context.membership.role == TeamRole.OWNER.value
+
+
+def get_settings_dep():
+    return get_settings()

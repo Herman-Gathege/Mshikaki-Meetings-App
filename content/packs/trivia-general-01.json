@@ -1,0 +1,29 @@
+{
+  "key": "trivia-general-01",
+  "game_key": "trivia-general",
+  "title": "General Trivia - Volume 1",
+  "description": "Facts most people have met at some point. No tricks, no obscure dates.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "What is the capital of Australia?", "answer": "Canberra", "category": "geography", "difficulty": "medium" },
+    { "prompt": "Which is the largest planet in our solar system?", "answer": "Jupiter", "category": "science", "difficulty": "easy" },
+    { "prompt": "What is the chemical symbol for gold?", "answer": "Au", "category": "science", "difficulty": "easy" },
+    { "prompt": "Which ocean is the largest?", "answer": "The Pacific", "category": "geography", "difficulty": "easy" },
+    { "prompt": "Which planet is known as the Red Planet?", "answer": "Mars", "category": "science", "difficulty": "easy" },
+    { "prompt": "Who painted the Mona Lisa?", "answer": "Leonardo da Vinci", "category": "arts", "difficulty": "easy" },
+    { "prompt": "Who wrote Things Fall Apart?", "answer": "Chinua Achebe", "category": "literature", "difficulty": "medium" },
+    { "prompt": "Which is the longest river in Africa?", "answer": "The Nile", "category": "geography", "difficulty": "easy" },
+    { "prompt": "Which country is home to the Great Wall?", "answer": "China", "category": "geography", "difficulty": "easy" },
+    { "prompt": "How many players from one team are on a football pitch?", "answer": "Eleven", "category": "sport", "difficulty": "easy" },
+    { "prompt": "Which gas do plants absorb from the air?", "answer": "Carbon dioxide", "category": "science", "difficulty": "easy" },
+    { "prompt": "Which vitamin do we mostly get from sunlight?", "answer": "Vitamin D", "category": "health", "difficulty": "medium" },
+    { "prompt": "Which is the fastest land animal?", "answer": "The cheetah", "category": "nature", "difficulty": "easy" },
+    { "prompt": "What is the smallest country in the world by area?", "answer": "Vatican City", "category": "geography", "difficulty": "medium" },
+    { "prompt": "Which country has the largest population?", "answer": "India", "category": "geography", "difficulty": "medium" },
+    { "prompt": "How many continents are there?", "answer": "Seven", "category": "geography", "difficulty": "easy" },
+    { "prompt": "Which organ pumps blood around the body?", "answer": "The heart", "category": "science", "difficulty": "easy" },
+    { "prompt": "Which desert is the largest hot desert in the world?", "answer": "The Sahara", "category": "geography", "difficulty": "medium" }
+  ]
+}

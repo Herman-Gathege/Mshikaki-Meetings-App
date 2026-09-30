@@ -41,8 +41,17 @@ def wait_for_db(timeout: int = 60, interval: float = 1.5) -> int:
 
 
 def seed() -> int:
-    """Placeholder until Phase 1 seeds game definitions and content packs (P1-26)."""
-    print("Nothing to seed yet. Game definitions and content packs arrive in Phase 1.")
+    """Load game definitions, content packs, XP rules and achievements."""
+    from app.db.session import get_session_factory
+    from app.seeds import seed_all
+
+    with get_session_factory()() as db:
+        result = seed_all(db)
+
+    for key, value in result.items():
+        print(f"{key}: {value}")
+    if result.get("content_dir_missing"):
+        print("Warning: the content pack directory was not found; the library is empty.")
     return 0
 
 

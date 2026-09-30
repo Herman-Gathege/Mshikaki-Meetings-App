@@ -1,0 +1,29 @@
+{
+  "key": "trivia-kenya-01",
+  "game_key": "trivia-kenya",
+  "title": "Kenyan Trivia - Volume 1",
+  "description": "Geography, history, sport and culture. Written to be fair to every age in the room.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "What is the capital city of Kenya?", "answer": "Nairobi", "category": "geography", "difficulty": "easy" },
+    { "prompt": "How many counties does Kenya have?", "answer": "47", "category": "geography", "difficulty": "easy" },
+    { "prompt": "In which year did Kenya gain independence?", "answer": "1963", "category": "history", "difficulty": "easy" },
+    { "prompt": "What is the highest mountain in Kenya?", "answer": "Mount Kenya", "category": "geography", "difficulty": "easy" },
+    { "prompt": "What is Kenya's currency called?", "answer": "The Kenyan shilling", "category": "general", "difficulty": "easy" },
+    { "prompt": "Which is the largest lake entirely inside Kenya?", "answer": "Lake Turkana", "category": "geography", "difficulty": "medium" },
+    { "prompt": "Which is the longest river in Kenya?", "answer": "The Tana", "category": "geography", "difficulty": "medium" },
+    { "prompt": "Who was Kenya's first president?", "answer": "Jomo Kenyatta", "category": "history", "difficulty": "easy" },
+    { "prompt": "What is Kenya's national language, alongside English?", "answer": "Kiswahili", "category": "culture", "difficulty": "easy" },
+    { "prompt": "Which Kenyan county is the smallest by area?", "answer": "Mombasa", "category": "geography", "difficulty": "hard" },
+    { "prompt": "Which county is the Maasai Mara national reserve in?", "answer": "Narok", "category": "geography", "difficulty": "medium" },
+    { "prompt": "Kenyan runner David Rudisha is famous in which event?", "answer": "The 800 metres", "category": "sport", "difficulty": "medium" },
+    { "prompt": "What is the nickname of Kenya's national football team?", "answer": "Harambee Stars", "category": "sport", "difficulty": "easy" },
+    { "prompt": "Which Kenyan won the Nobel Peace Prize in 2004?", "answer": "Wangari Maathai", "category": "history", "difficulty": "medium" },
+    { "prompt": "Name three colours on the Kenyan flag.", "answer": "Black, red, green (with white edges)", "category": "culture", "difficulty": "easy" },
+    { "prompt": "Which crop is Kenya's largest export by value?", "answer": "Tea", "category": "economy", "difficulty": "medium" },
+    { "prompt": "Which lake does the Kenyan side of Lake Victoria border?", "answer": "Nyanza, in western Kenya", "category": "geography", "difficulty": "hard" },
+    { "prompt": "How many hours ahead of GMT is Kenyan time?", "answer": "Three hours (UTC+3)", "category": "general", "difficulty": "easy" }
+  ]
+}

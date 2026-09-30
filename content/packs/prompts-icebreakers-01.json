@@ -1,0 +1,26 @@
+{
+  "key": "icebreakers-01",
+  "game_key": "prompts-icebreakers",
+  "title": "Get to Know - Volume 1",
+  "description": "Warm questions with no wrong answers, for a room that mostly knows each other.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "What is the last song you played twice in a row?" },
+    { "prompt": "What is your go-to nyama choma order?" },
+    { "prompt": "Which Kenyan town would you move to tomorrow, and why?" },
+    { "prompt": "What is the most useless talent you have?" },
+    { "prompt": "Which fictional character would you add to this team?" },
+    { "prompt": "Matatu, boda or walk: what is your normal Nairobi commute?" },
+    { "prompt": "What is the best meal you can get for 200 bob?" },
+    { "prompt": "What is a film you can quote from start to finish?" },
+    { "prompt": "Which food would you refuse to share, ever?" },
+    { "prompt": "What is the last thing you fixed yourself?" },
+    { "prompt": "Tea or coffee, and how many cups before 10am?" },
+    { "prompt": "What is your favourite Kenyan proverb or phrase?" },
+    { "prompt": "If you had one superpower at work, what would it be?" },
+    { "prompt": "What is a small thing that made your week better?" },
+    { "prompt": "What is the best advice you have been given by a colleague?" }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "key": "hosted-activity-01",
+  "game_key": "hosted-activity",
+  "title": "Host-judged Activities",
+  "description": "The host runs the activity and enters the final standings by hand.",
+  "language": "en",
+  "license": "original",
+  "attribution": "Written for Mshikaki by the Innovations team",
+  "items": [
+    { "prompt": "Charades: Kenyan places. Act one out, the room guesses.", "category": "charades", "difficulty": "easy" },
+    { "prompt": "Two truths and a lie. The room votes on the lie.", "category": "talk", "difficulty": "easy" },
+    { "prompt": "Story chain: each person adds one sentence to a story about the team.", "category": "creative", "difficulty": "easy" },
+    { "prompt": "60-second pitch: sell an everyday object as if it were new technology.", "category": "pitch", "difficulty": "medium" },
+    { "prompt": "Human knot: everyone holds hands across the circle and untangles without letting go.", "category": "movement", "difficulty": "medium" },
+    { "prompt": "Sound effects only: hum a Kenyan advert and let the room guess it.", "category": "music", "difficulty": "medium" },
+    { "prompt": "Draw and guess: sketch a Kenyan landmark in 30 seconds.", "category": "creative", "difficulty": "easy" },
+    { "prompt": "Team quiz relay: one person per question, rotate every round.", "category": "team", "difficulty": "easy" },
+    { "prompt": "Explain it badly: describe your job using only five words.", "category": "talk", "difficulty": "easy" },
+    { "prompt": "Memory tray: reveal ten objects for 20 seconds, then recall them.", "category": "memory", "difficulty": "medium" },
+    { "prompt": "Standing debate: argue for or against pineapple on pizza, 30 seconds each.", "category": "talk", "difficulty": "easy" },
+    { "prompt": "Silent lineup: order yourselves by height, birthday or distance travelled, without speaking.", "category": "movement", "difficulty": "easy" }
+  ]
+}

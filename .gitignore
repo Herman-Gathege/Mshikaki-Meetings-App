@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Backups and database dumps
+backups/
+*.sql
+*.sql.gz
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

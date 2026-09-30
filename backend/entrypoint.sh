@@ -17,6 +17,10 @@ python -m app.cli wait-for-db --timeout "${DB_WAIT_TIMEOUT:-60}"
 echo "Applying migrations..."
 alembic upgrade head
 
+# Idempotent: game definitions, content packs, XP rules and achievements.
+echo "Seeding game content..."
+python -m app.cli seed
+
 echo "Starting uvicorn on :8000"
 exec uvicorn app.main:app \
     --host 0.0.0.0 \

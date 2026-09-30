@@ -45,7 +45,9 @@ def _people(db: DbSession, session: MeetingSession) -> list[dict]:
             {
                 "name": name,
                 "role": participant.role,
-                "attended": participant.attended,
+                # Being added to a session means you were in it; the facilitator
+                # toggles attendance off for no-shows rather than on for everyone.
+                "attended": participant.attended or participant.joined_at is not None,
                 "user_id": str(participant.user_id) if participant.user_id else None,
                 "guest_id": str(participant.guest_id) if participant.guest_id else None,
             }

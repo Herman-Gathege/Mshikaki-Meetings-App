@@ -7,6 +7,7 @@ import {
   useGames,
   usePlay,
   useSessionPlayers,
+  useSessionLifecycle,
   useSessions,
   useStartPlay,
 } from "@/api/hooks";
@@ -56,27 +57,55 @@ function StartGameModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [gameKey, setGameKey] = useState("");
   const [packId, setPackId] = useState("");
   const start = useStartPlay(sessionId);
+  const lifecycle = useSessionLifecycle(sessionId);
   const navigate = useNavigate();
 
-  const active = (sessions.data?.items ?? []).filter((session) => session.status === "active");
+  // A meeting that has been planned but not started is the common case, so it
+  // belongs in this list. Live sessions sort first.
+  const ORDER: Record<string, number> = { active: 0, paused: 1, planned: 2 };
+  const selectable = (sessions.data?.items ?? [])
+    .filter((session) => session.status in ORDER)
+    .sort((a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9));
+  const selected = selectable.find((session) => session.id === sessionId);
+  const notStarted = selected?.status === "planned";
 
   return (
     <Modal open={open} title="Start a game" onClose={onClose}>
       <div className="space-y-4">
-        <Field label="In which session?" hint="Only a live session can host a game.">
+        <Field label="In which session?">
           <Select value={sessionId} onChange={(event) => setSessionId(event.target.value)}>
             <option value="">Pick a session</option>
-            {active.map((session) => (
+            {selectable.map((session) => (
               <option key={session.id} value={session.id}>
-                {session.title}
+                {session.title} · {session.status}
               </option>
             ))}
           </Select>
         </Field>
-        {active.length === 0 ? (
+        {selectable.length === 0 ? (
           <p className="text-sm text-ink-600">
-            No session is running. Start one from <Link className="underline" to="/sessions">Sessions</Link>.
+            You have no sessions yet. Plan one from{" "}
+            <Link className="underline" to="/sessions">
+              Sessions
+            </Link>
+            .
           </p>
+        ) : null}
+        {notStarted ? (
+          <div className="rounded-lg border border-ember-500/40 bg-ember-500/10 p-3">
+            <p className="text-sm text-ink-800">
+              <strong>{selected?.title}</strong> has not been started yet. Starting it keeps the
+              summary and Run Mode consistent with the game results.
+            </p>
+            <Button
+              size="sm"
+              className="mt-2"
+              disabled={lifecycle.start.isPending}
+              onClick={() => void lifecycle.start.mutateAsync()}
+            >
+              {lifecycle.start.isPending ? "Starting..." : "Start this session"}
+            </Button>
+          </div>
         ) : null}
         <Field label="Game">
           <Select value={gameKey} onChange={(event) => setGameKey(event.target.value)}>

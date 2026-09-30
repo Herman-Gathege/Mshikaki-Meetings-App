@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session as DbSession
 
 from app.api.auth import set_session_cookie
@@ -26,7 +26,9 @@ def join(
     response: Response,
     request: Request,
     db: DbSession = DbDep,  # type: ignore[assignment]
-    settings: Settings = get_settings(),
+    # Depends, not a bare call: FastAPI inspects defaults, and a Pydantic model
+    # default would be taken as a second request body.
+    settings: Settings = Depends(get_settings),
 ) -> dict:
     user, membership, team, session, token = joining.join(
         db,

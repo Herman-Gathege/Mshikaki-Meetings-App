@@ -50,6 +50,18 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = False
     session_ttl_days: int = 14
 
+    # Guests joining by QR must use a work address. Comma-separated domains;
+    # set to empty to allow any email.
+    allowed_email_domains: str = "kbc.co.ke"
+
+    @property
+    def email_domains(self) -> tuple[str, ...]:
+        return tuple(
+            part.strip().lower().lstrip("@")
+            for part in self.allowed_email_domains.split(",")
+            if part.strip()
+        )
+
     # Digest email (Phase 4)
     digest_enabled: bool = False
     smtp_host: str | None = None

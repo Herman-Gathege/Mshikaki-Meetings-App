@@ -261,6 +261,13 @@ def claim_guest(
     return guest
 
 
+def email_domain_ok(email: str, allowed: tuple[str, ...]) -> bool:
+    if not allowed:
+        return True
+    domain = email.strip().lower().rsplit("@", 1)[-1]
+    return any(domain == item or domain.endswith(f".{item}") for item in allowed)
+
+
 def update_team(
     db: DbSession,
     *,

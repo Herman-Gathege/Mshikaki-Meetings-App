@@ -28,6 +28,7 @@ from app.api import (
     games,
     health,
     ideas,
+    join,
     projects,
     record,
     sessions,
@@ -77,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     for router in (
         health.router,
         auth.router,
+        join.router,
         team.router,
         sessions.router,
         today.router,

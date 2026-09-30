@@ -12,6 +12,7 @@ import {
   useUpdatePreferences,
 } from "@/api/hooks";
 import { LoadingState, PageHeader, ErrorState } from "@/components/states";
+import { JoinQr, QrOverlay, joinUrlFor } from "@/components/JoinQr";
 import { Button, Card, Field, Input, Select } from "@/components/ui/kit";
 
 export function TeamPage() {
@@ -27,6 +28,7 @@ export function TeamPage() {
   const [guestName, setGuestName] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [code, setCode] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
 
   if (team.isPending) return <LoadingState />;
   if (team.isError) return <ErrorState error={team.error} />;
@@ -88,13 +90,19 @@ export function TeamPage() {
             </Button>
           </div>
           {code ? (
-            <p className="mt-3 text-sm">
-              Share this code:{" "}
-              <span className="font-mono font-semibold">{code}</span>
-              <span className="block text-xs text-ink-400">
-                They join at /login?invite={code}
-              </span>
-            </p>
+            <div className="mt-4 flex flex-wrap items-start gap-4">
+              <JoinQr
+                url={joinUrlFor(code)}
+                className="size-32 shrink-0 rounded-lg border border-ink-200 p-1 [&>svg]:h-full [&>svg]:w-full"
+              />
+              <div className="min-w-0 text-sm">
+                <p className="font-mono text-base font-semibold">{code}</p>
+                <p className="mt-1 text-xs break-all text-ink-600">{joinUrlFor(code)}</p>
+                <Button size="sm" className="mt-2" onClick={() => setQrOpen(true)}>
+                  Show big for the room
+                </Button>
+              </div>
+            </div>
           ) : null}
 
           <h2 className="mt-6 mb-3 text-sm font-semibold text-ink-800">Guests</h2>
@@ -158,6 +166,10 @@ export function TeamPage() {
           </p>
         </Card>
       </div>
+
+      {code ? (
+        <QrOverlay url={joinUrlFor(code)} code={code} open={qrOpen} onClose={() => setQrOpen(false)} />
+      ) : null}
     </>
   );
 }

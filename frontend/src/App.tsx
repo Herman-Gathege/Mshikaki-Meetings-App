@@ -5,6 +5,7 @@ import { useMe } from "@/api/hooks";
 import { LoadingState } from "@/components/states";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoginPage } from "@/pages/LoginPage";
+import { JoinPage } from "@/pages/JoinPage";
 import { RunModePage } from "@/pages/RunModePage";
 import { SessionPage } from "@/pages/SessionPage";
 import { SessionsPage } from "@/pages/SessionsPage";
@@ -32,7 +33,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/join/:code" element={<JoinRedirect />} />
+          <Route path="/join/:code" element={<JoinPage />} />
 
           <Route element={<RequireAuth />}>
             {/* Screen-first: no app chrome while a room is watching. */}
@@ -80,9 +81,4 @@ function RequireAuth() {
     return <Navigate to="/login" replace />;
   }
   return <Outlet />;
-}
-
-function JoinRedirect() {
-  const code = window.location.pathname.split("/").pop() ?? "";
-  return <Navigate to={`/login?invite=${code}`} replace />;
 }

@@ -26,6 +26,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class JoinRequest(BaseModel):
+    code: str = Field(min_length=4, max_length=40)
+    display_name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+
+
 class TeamUpdateRequest(BaseModel):
     name: str | None = Field(default=None, max_length=200)
     description: str | None = None

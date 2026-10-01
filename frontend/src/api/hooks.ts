@@ -200,11 +200,13 @@ export function useSessions() {
   });
 }
 
-export function useSession(sessionId: string | undefined) {
+export function useSession(sessionId: string | undefined, pollMs?: number) {
   return useQuery({
     queryKey: ["sessions", sessionId],
     queryFn: () => apiFetch<SessionDetail>(`/sessions/${sessionId}`),
     enabled: Boolean(sessionId),
+    // Run Mode polls, so the room converges on whatever the facilitator is on.
+    ...(pollMs ? { refetchInterval: pollMs } : {}),
   });
 }
 
@@ -253,6 +255,10 @@ export function useSessionLifecycle(sessionId: string) {
     cancel: useMutation({
       mutationFn: (reason?: string) => action("cancel", { reason: reason || undefined }),
       onSuccess: () => invalidate(["sessions", "today"]),
+    }),
+    setStage: useMutation({
+      mutationFn: (stage: string) => action("run-mode", { stage }),
+      onSuccess: () => invalidate(["sessions"]),
     }),
   };
 }

@@ -47,7 +47,17 @@ export function JoinPage() {
         json: { code, display_name: displayName, email, password },
       }),
     onSuccess: (result) => {
-      navigate(result.session ? `/sessions/${result.session.id}` : "/");
+      // Somebody scanning the code while the meeting is running belongs in the
+      // meeting, on the stage the room is on, not on a stale summary page.
+      if (result.session) {
+        navigate(
+          result.session.run_mode_active
+            ? `/sessions/${result.session.id}/run`
+            : `/sessions/${result.session.id}`,
+        );
+        return;
+      }
+      navigate("/");
     },
   });
 

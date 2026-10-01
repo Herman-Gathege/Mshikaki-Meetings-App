@@ -38,6 +38,9 @@ const SECONDARY = [
   { to: "/team", label: "Team", icon: Users, end: false },
 ];
 
+/** One place for the credit link, so nobody has to hunt for the URL. */
+const PORTFOLIO_URL = "https://my-portfolio-7v1e.onrender.com/";
+
 export function AppLayout() {
   const me = useMe();
   const logout = useLogout();
@@ -157,6 +160,19 @@ export function AppLayout() {
               >
                 Sign out
               </button>
+              {/* The same credit, in the mobile equivalent of the sidebar. */}
+              <a
+                href={PORTFOLIO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border border-ember-500/30 bg-ember-500/10 px-3 py-2 font-medium text-ember-700"
+              >
+                <span aria-hidden>✨</span>
+                My Portfolio
+                <span aria-hidden className="text-ink-600">
+                  ↗
+                </span>
+              </a>
             </nav>
           </div>
         ) : null}
@@ -185,9 +201,20 @@ export function AppLayout() {
         <p className="mt-6 px-3 text-xs text-ink-600">
           For fun. Not a performance measure.
         </p>
-        <p className="mt-6 px-3 text-xs text-ink-600">
-          This was made by:https://my-portfolio-7v1e.onrender.com/
-        </p>
+        {/* A small credit rather than another destination: same URL, opened
+            safely in a new tab, never navigating Mshikaki away. */}
+        <a
+          href={PORTFOLIO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 flex items-center gap-2 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2 text-xs font-medium text-ember-700 transition-colors hover:bg-ember-500/20"
+        >
+          <span aria-hidden>✨</span>
+          My Portfolio
+          <span aria-hidden className="ml-auto text-ink-600">
+            ↗
+          </span>
+        </a>
       </aside>
 
       <main className="mx-auto max-w-5xl px-4 py-5">

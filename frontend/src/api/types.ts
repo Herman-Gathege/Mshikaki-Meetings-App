@@ -18,6 +18,7 @@ export type IdeaStatus =
 export type TaskStatus = "backlog" | "in_progress" | "blocked" | "done" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 export type GameFamily = "prompt_deck" | "host_quiz" | "host_scored";
+export type RunModeStage = "play" | "capture" | "decide" | "assign" | "close";
 
 export interface Me {
   user: {
@@ -105,6 +106,10 @@ export interface SessionDetail extends Omit<SessionListItem, "facilitator"> {
   tasks_open: number;
   has_summary: boolean;
   summary_generated_at: string | null;
+  /** Which Run Mode stage the room is on, set by the facilitator. */
+  run_mode_stage: RunModeStage | null;
+  run_mode_active: boolean;
+  run_mode_updated_at: string | null;
   agenda: AgendaItem[];
   ideas: { id: string; title: string; status: IdeaStatus; author: string }[];
   decisions: { id: string; statement: string; recorded_by: string }[];

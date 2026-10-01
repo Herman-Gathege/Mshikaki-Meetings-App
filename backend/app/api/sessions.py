@@ -18,6 +18,7 @@ from app.schemas import (
     CancelRequest,
     ParticipantRequest,
     ReopenRequest,
+    RunModeStageRequest,
     SessionCreateRequest,
     SessionUpdateRequest,
 )
@@ -194,6 +195,27 @@ def cancel_session(
         actor=context.actor,
         actor_name=context.name,
         reason=payload.reason,
+    )
+    return meetings.session_detail(db, session)
+
+
+@router.post("/sessions/{session_id}/run-mode")
+def set_run_mode_stage(
+    session_id: uuid.UUID,
+    payload: RunModeStageRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """The facilitator's current stage. Participants poll the session and follow.
+
+    Deliberately not an activity record: moving the room from one screen to the
+    next is navigation, not a change to the work, and recording every tap would
+    drown the trail.
+    """
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_lifecycle(context, session, "start")
+    meetings.set_run_mode_stage(
+        db, session=session, stage=payload.stage, actor=context.actor, actor_name=context.name
     )
     return meetings.session_detail(db, session)
 

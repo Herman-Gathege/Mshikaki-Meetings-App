@@ -64,11 +64,16 @@ export function SessionPage() {
               </ButtonLink>
             ) : null}
             {!canRun ? (
-              <span className="self-center text-sm text-ink-600">
-                {data.facilitator
-                  ? `${data.facilitator.name} runs this meeting`
-                  : "Waiting for a facilitator"}
-              </span>
+              <>
+                {data.run_mode_active ? (
+                  <ButtonLink to={`/sessions/${data.id}/run`}>Follow the meeting →</ButtonLink>
+                ) : null}
+                <span className="self-center text-sm text-ink-600">
+                  {data.facilitator
+                    ? `${data.facilitator.name} runs this meeting`
+                    : "Waiting for a facilitator"}
+                </span>
+              </>
             ) : null}
           </>
         }

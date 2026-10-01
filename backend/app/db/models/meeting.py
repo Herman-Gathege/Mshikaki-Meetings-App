@@ -63,6 +63,13 @@ class Session(UuidPk, Timestamps, SoftDelete, Base):
     summary_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Which Run Mode stage the room is on. The facilitator writes it, everybody
+    # else polls and follows, and closing the session clears it so nobody is left
+    # trapped inside the meeting.
+    run_mode_stage: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    run_mode_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

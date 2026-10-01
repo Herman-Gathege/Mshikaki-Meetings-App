@@ -79,6 +79,10 @@ class CancelRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=300)
 
 
+class RunModeStageRequest(BaseModel):
+    stage: str = Field(min_length=2, max_length=16)
+
+
 class ParticipantRequest(BaseModel):
     user_id: uuid.UUID | None = None
     guest_id: uuid.UUID | None = None

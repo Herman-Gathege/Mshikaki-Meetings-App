@@ -20,6 +20,7 @@ from app.db.models import (
     User,
 )
 from app.db.models import Session as MeetingSession
+from app.domain import run_mode as run_mode_rules
 from app.domain import sessions as session_rules
 from app.domain.enums import GamePlayStatus, ParticipantRole, SessionStatus, TaskStatus
 from app.errors import AppError, NotFoundError
@@ -333,9 +334,27 @@ def start_session(
         ).first()
         if clash is not None:
             raise AppError("Another session is already running.", code="session.already_active")
+        # Starting a meeting puts the room into Run Mode at the first stage, so
+        # participants arrive on the same screen as the facilitator.
+        session.run_mode_stage = run_mode_rules.DEFAULT_STAGE
+        session.run_mode_updated_at = datetime.now(timezone.utc)
     return _lifecycle(
         db, session=session, target=SessionStatus.ACTIVE.value, actor=actor, actor_name=actor_name
     )
+
+
+def set_run_mode_stage(
+    db: DbSession, *, session: MeetingSession, stage: str, actor, actor_name: str
+) -> MeetingSession:
+    """The facilitator moves the room. Everybody else reads this."""
+    try:
+        run_mode_rules.ensure_stage(stage)
+    except run_mode_rules.UnknownStage as exc:
+        raise AppError(f"'{stage}' is not a Run Mode stage.", code="run_mode.bad_stage") from exc
+    session.run_mode_stage = stage
+    session.run_mode_updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return session
 
 
 def pause_session(
@@ -390,6 +409,9 @@ def close_session(
 
     session.status = SessionStatus.COMPLETED.value
     session.ended_at = datetime.now(timezone.utc)
+    # Release the room: everybody gets their navigation back.
+    session.run_mode_stage = None
+    session.run_mode_updated_at = datetime.now(timezone.utc)
     db.flush()
 
     counts = session_counts(db, session.id)
@@ -474,6 +496,11 @@ def session_detail(db: DbSession, session: MeetingSession) -> dict:
             ]
         ),
         "has_summary": session.summary_snapshot is not None,
+        "run_mode_stage": session.run_mode_stage,
+        "run_mode_active": run_mode_rules.is_running(session.status, session.run_mode_stage),
+        "run_mode_updated_at": (
+            session.run_mode_updated_at.isoformat() if session.run_mode_updated_at else None
+        ),
         "summary_generated_at": (
             session.summary_generated_at.isoformat() if session.summary_generated_at else None
         ),

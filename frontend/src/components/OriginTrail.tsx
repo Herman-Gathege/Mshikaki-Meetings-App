@@ -46,9 +46,9 @@ export function OriginTrail({
       <ol className="space-y-2">
         {entries.map((entry, index) => (
           <li key={entry.key} className="flex items-center gap-2 text-sm">
-            <span className="text-ink-400">{index + 1}.</span>
+            <span className="text-ink-600">{index + 1}.</span>
             <Link
-              className="font-medium text-ember-600 hover:underline"
+              className="font-medium text-ember-700 hover:underline"
               to={`/${entry.key === "session" ? "sessions" : `${entry.key}s`}/${entry.id}`}
             >
               {entry.label}
@@ -56,7 +56,7 @@ export function OriginTrail({
           </li>
         ))}
       </ol>
-      <p className="mt-3 text-xs text-ink-400">
+      <p className="mt-3 text-xs text-ink-600">
         The chain is kept even if something along it is deleted.
       </p>
     </Card>

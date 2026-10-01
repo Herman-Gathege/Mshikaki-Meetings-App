@@ -58,7 +58,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base outline-none placeholder:text-ink-400 focus-visible:border-ember-500",
+        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "w-full rounded-lg border border-ink-200 bg-white p-3 text-base outline-none placeholder:text-ink-400 focus-visible:border-ember-500",
+        "w-full rounded-lg border border-ink-200 bg-white p-3 text-base outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
         className,
       )}
       {...props}
@@ -105,7 +105,7 @@ export function Field({
     <label className="block space-y-1.5">
       <span className="block text-sm font-medium text-ink-800">{label}</span>
       {children}
-      {hint ? <span className="block text-xs text-ink-400">{hint}</span> : null}
+      {hint ? <span className="block text-xs text-ink-600">{hint}</span> : null}
     </label>
   );
 }
@@ -128,8 +128,8 @@ export function Card({
 
 const badgeTones: Record<string, string> = {
   neutral: "bg-ink-100 text-ink-800",
-  ember: "bg-ember-500/15 text-ember-600",
-  nile: "bg-nile-500/15 text-nile-500",
+  ember: "bg-ember-500/15 text-ember-700",
+  nile: "bg-nile-500/15 text-nile-700",
   danger: "bg-red-100 text-red-700",
   success: "bg-emerald-100 text-emerald-700",
 };

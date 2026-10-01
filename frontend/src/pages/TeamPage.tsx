@@ -48,7 +48,7 @@ export function TeamPage() {
               <li key={member.membership_id} className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">{member.name}</p>
-                  <p className="text-xs text-ink-400">{member.email}</p>
+                  <p className="text-xs text-ink-600">{member.email}</p>
                 </div>
                 <Select
                   className="w-32"
@@ -161,7 +161,7 @@ export function TeamPage() {
               Hide me from standings
             </Button>
           </Field>
-          <p className="mt-2 text-xs text-ink-400">
+          <p className="mt-2 text-xs text-ink-600">
             Opting out is private: you still earn XP, you just do not appear in the table.
           </p>
         </Card>

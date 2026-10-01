@@ -51,7 +51,7 @@ export function AppLayout() {
     <div className="min-h-dvh bg-ink-50 pb-20 lg:pb-0 lg:pl-64">
       <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <NavLink to="/" className="text-base font-semibold tracking-tight text-ember-600">
+          <NavLink to="/" className="text-base font-semibold tracking-tight text-ember-700">
             MSHIKAKI
           </NavLink>
           <span className="hidden truncate text-sm text-ink-600 sm:inline">
@@ -150,7 +150,7 @@ export function AppLayout() {
       </header>
 
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-ink-200 bg-white p-4 lg:block">
-        <p className="px-2 py-3 text-lg font-semibold tracking-tight text-ember-600">MSHIKAKI</p>
+        <p className="px-2 py-3 text-lg font-semibold tracking-tight text-ember-700">MSHIKAKI</p>
         <nav className="space-y-1">
           {[...NAV, ...SECONDARY].map((item) => (
             <NavLink
@@ -169,7 +169,7 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <p className="mt-6 px-3 text-xs text-ink-400">
+        <p className="mt-6 px-3 text-xs text-ink-600">
           For fun. Not a performance measure.
         </p>
       </aside>
@@ -196,7 +196,7 @@ export function AppLayout() {
                 className={({ isActive }) =>
                   cn(
                     "flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-medium",
-                    isActive ? "text-ember-600" : "text-ink-600",
+                    isActive ? "text-ember-700" : "text-ink-600",
                   )
                 }
               >

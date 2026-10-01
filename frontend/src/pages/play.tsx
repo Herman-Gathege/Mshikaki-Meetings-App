@@ -53,7 +53,7 @@ export function PlayPage() {
               </span>
             </div>
             <p className="text-sm text-ink-600">{game.description}</p>
-            <p className="mt-auto text-xs text-ink-400">{game.how_to_play}</p>
+            <p className="mt-auto text-xs text-ink-600">{game.how_to_play}</p>
           </Card>
         ))}
       </div>

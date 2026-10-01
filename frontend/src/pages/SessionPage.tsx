@@ -168,7 +168,7 @@ function AgendaTab({ sessionId }: { sessionId: string }) {
       <ul className="space-y-2">
         {(session.data?.agenda ?? []).map((item) => (
           <Card as="li" key={item.id} className="flex items-center justify-between gap-3">
-            <span className={item.covered ? "text-ink-400 line-through" : ""}>{item.title}</span>
+            <span className={item.covered ? "text-ink-600 line-through" : ""}>{item.title}</span>
             {!item.covered ? (
               <Button
                 variant="outline"
@@ -201,7 +201,7 @@ function IdeasTab({ sessionId }: { sessionId: string }) {
               <Link className="font-medium hover:underline" to={`/ideas/${idea.id}`}>
                 {idea.title}
               </Link>
-              <p className="text-xs text-ink-400">by {idea.author.name}</p>
+              <p className="text-xs text-ink-600">by {idea.author.name}</p>
             </div>
             <StatusBadge status={idea.status} />
           </div>
@@ -225,7 +225,7 @@ function TasksTab({ sessionId }: { sessionId: string }) {
               <Link className="font-medium hover:underline" to={`/tasks/${task.id}`}>
                 {task.title}
               </Link>
-              <p className="text-xs text-ink-400">
+              <p className="text-xs text-ink-600">
                 {task.owner ? task.owner.name : "unassigned"}
                 {task.due_date ? ` · due ${task.due_date}` : ""}
               </p>

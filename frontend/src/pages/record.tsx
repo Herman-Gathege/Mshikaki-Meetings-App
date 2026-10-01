@@ -21,7 +21,7 @@ export function ActivityPage() {
         {metrics.isPending ? <LoadingState label="Loading" /> : null}
         {metrics.data ? (
           <>
-            <p className="mt-2 text-xs text-ink-400">{metrics.data.note}</p>
+            <p className="mt-2 text-xs text-ink-600">{metrics.data.note}</p>
             <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
               {[
                 ["Open", metrics.data.open_tasks],
@@ -171,7 +171,7 @@ export function LeaderboardPage() {
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-xs text-ink-400">
+        <p className="mt-4 text-xs text-ink-600">
           Capped so nobody can farm it. Opt out any time on the Team page.
         </p>
       </Card>

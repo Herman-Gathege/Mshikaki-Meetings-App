@@ -81,7 +81,7 @@ export function TodayPage() {
             <h2 className="text-sm font-semibold tracking-wide text-ink-600 uppercase">
               🎯 Your things
             </h2>
-            <Link className="text-sm text-ember-600 hover:underline" to="/work/mine">
+            <Link className="text-sm text-ember-700 hover:underline" to="/work/mine">
               All {data.my_open_count}
             </Link>
           </div>
@@ -97,7 +97,7 @@ export function TodayPage() {
                     <Link className="font-medium hover:underline" to={`/tasks/${task.id}`}>
                       {task.title}
                     </Link>
-                    <p className="text-xs text-ink-400">
+                    <p className="text-xs text-ink-600">
                       {task.due_date
                         ? isOverdue(task.due_date, task.status)
                           ? `Overdue · due ${task.due_date}`
@@ -126,7 +126,7 @@ export function TodayPage() {
                 {lastDone.counts.tasks} tasks
               </p>
               <Link
-                className="inline-block text-sm text-ember-600 hover:underline"
+                className="inline-block text-sm text-ember-700 hover:underline"
                 to={`/sessions/${lastDone.id}`}
               >
                 Read what happened →
@@ -155,7 +155,7 @@ export function TodayPage() {
                     {blocker.task_title ?? "A task"}
                   </Link>
                   <p className="text-sm text-ink-600">{blocker.reason}</p>
-                  <p className="text-xs text-ink-400">
+                  <p className="text-xs text-ink-600">
                     {blocker.raised_by} · {formatRelative(blocker.raised_at)}
                   </p>
                 </li>

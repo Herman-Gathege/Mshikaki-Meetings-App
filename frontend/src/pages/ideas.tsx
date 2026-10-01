@@ -61,7 +61,7 @@ export function IdeasPage() {
                 {idea.description ? (
                   <p className="mt-1 line-clamp-2 text-sm text-ink-600">{idea.description}</p>
                 ) : null}
-                <p className="mt-1 text-xs text-ink-400">
+                <p className="mt-1 text-xs text-ink-600">
                   {idea.author.name} · {formatDateTime(idea.created_at)}
                   {idea.converted_to ? ` · became a ${idea.converted_to.type}` : ""}
                 </p>
@@ -189,7 +189,7 @@ export function IdeaPage() {
               {data.comments.map((item) => (
                 <li key={item.id} className="text-sm">
                   <span className="font-medium">{item.author}</span>{" "}
-                  <span className="text-ink-400">{formatDateTime(item.created_at)}</span>
+                  <span className="text-ink-600">{formatDateTime(item.created_at)}</span>
                   <p className="text-ink-900">{item.body}</p>
                 </li>
               ))}
@@ -259,7 +259,7 @@ export function DecisionPage() {
               <p className="mt-2 text-sm text-ink-600">{data.rationale}</p>
             ) : null}
             {data.is_superseded ? (
-              <p className="mt-3 text-sm text-ember-600">
+              <p className="mt-3 text-sm text-ember-700">
                 This decision was superseded by a later one.
               </p>
             ) : null}

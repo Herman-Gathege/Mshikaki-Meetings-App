@@ -52,7 +52,7 @@ export function JoinQr({ url, className }: { url: string; className?: string }) 
 
   if (!svg) {
     return (
-      <div className={`flex items-center justify-center text-xs text-ink-400 ${className ?? ""}`}>
+      <div className={`flex items-center justify-center text-xs text-ink-600 ${className ?? ""}`}>
         Generating…
       </div>
     );

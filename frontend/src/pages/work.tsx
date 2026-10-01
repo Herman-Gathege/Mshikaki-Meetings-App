@@ -126,7 +126,7 @@ function TaskCard({ task, detailed = false }: { task: Task; detailed?: boolean }
           <Link className="font-medium hover:underline" to={`/tasks/${task.id}`}>
             {task.title}
           </Link>
-          <p className="text-xs text-ink-400">
+          <p className="text-xs text-ink-600">
             {task.owner?.name ?? "unassigned"}
             {task.due_date
               ? ` · ${isOverdue(task.due_date, task.status) ? "overdue since" : "due"} ${task.due_date}`
@@ -191,7 +191,7 @@ function BlockersCard() {
           <li key={blocker.id} className="rounded-lg border border-ink-200 p-3">
             <p className="text-sm font-medium">{blocker.task_title ?? "A task"}</p>
             <p className="text-sm text-ink-600">{blocker.reason}</p>
-            <p className="text-xs text-ink-400">raised by {blocker.raised_by}</p>
+            <p className="text-xs text-ink-600">raised by {blocker.raised_by}</p>
             {open === blocker.id ? (
               <div className="mt-2 space-y-2">
                 <Input
@@ -247,7 +247,7 @@ function ProjectsSection() {
             <Link className="text-sm hover:underline" to={`/projects/${project.id}`}>
               {project.name}
             </Link>
-            <span className="ml-2 text-xs text-ink-400">{project.status}</span>
+            <span className="ml-2 text-xs text-ink-600">{project.status}</span>
           </li>
         ))}
         {projects.data?.items.length === 0 ? (
@@ -409,7 +409,7 @@ export function TaskPage() {
               {data.comments.map((item) => (
                 <li key={item.id}>
                   <span className="font-medium">{item.author}</span>{" "}
-                  <span className="text-ink-400">{formatDateTime(item.created_at)}</span>
+                  <span className="text-ink-600">{formatDateTime(item.created_at)}</span>
                   <p>{item.body}</p>
                 </li>
               ))}

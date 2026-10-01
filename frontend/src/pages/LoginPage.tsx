@@ -36,7 +36,7 @@ export function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-5">
       <header className="space-y-2">
-        <p className="text-sm font-semibold tracking-wide text-ember-600 uppercase">Mshikaki</p>
+        <p className="text-sm font-semibold tracking-wide text-ember-700 uppercase">Mshikaki</p>
         <h1 className="text-3xl font-semibold text-balance">
           We came to the meeting to play. Somehow we left with assigned tasks.
         </h1>
@@ -120,7 +120,7 @@ export function LoginPage() {
         ) : null}
       </Card>
 
-      <p className="text-xs text-ink-400">
+      <p className="text-xs text-ink-600">
         Internal tool. Email and password only, and nothing here is used to evaluate anybody.
       </p>
     </main>

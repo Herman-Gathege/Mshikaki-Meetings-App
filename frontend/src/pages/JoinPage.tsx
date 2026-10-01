@@ -70,7 +70,7 @@ export function JoinPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 p-5">
       <header className="space-y-2">
-        <p className="text-sm font-semibold tracking-wide text-ember-600 uppercase">Mshikaki</p>
+        <p className="text-sm font-semibold tracking-wide text-ember-700 uppercase">Mshikaki</p>
         <h1 className="text-3xl font-semibold text-balance">
           Joining {data?.team_name ?? "the team"}
         </h1>
@@ -128,7 +128,7 @@ export function JoinPage() {
         ) : null}
       </Card>
 
-      <p className="text-xs text-ink-400">
+      <p className="text-xs text-ink-600">
         You are created as a member of {data?.team_name ?? "the team"}. That account is what lets
         you capture ideas, take tasks and follow what was decided.
       </p>

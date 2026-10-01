@@ -56,7 +56,7 @@ export function ActivityFeed({
                   item.description
                 )}
               </p>
-              <p className="text-xs text-ink-400">{formatRelative(item.occurred_at)}</p>
+              <p className="text-xs text-ink-600">{formatRelative(item.occurred_at)}</p>
             </div>
           </li>
         );

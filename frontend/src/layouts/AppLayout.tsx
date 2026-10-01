@@ -18,9 +18,9 @@ import {
   Users,
 } from "lucide-react";
 
-import { useLogout, useMe, useSearch } from "@/api/hooks";
+import { useLogout, useMe, useSearch, useToday } from "@/api/hooks";
 import { CaptureSheet } from "@/components/CaptureSheet";
-import { Button, Input } from "@/components/ui/kit";
+import { Button, ButtonLink, Input } from "@/components/ui/kit";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -46,6 +46,9 @@ export function AppLayout() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [term, setTerm] = useState("");
   const search = useSearch(term);
+  // Wherever you are, if a meeting is running you can get to it in one tap.
+  const today = useToday();
+  const live = today.data?.session?.status === "active" ? today.data.session : null;
 
   return (
     <div className="min-h-dvh bg-ink-50 pb-20 lg:pb-0 lg:pl-64">
@@ -57,6 +60,16 @@ export function AppLayout() {
           <span className="hidden truncate text-sm text-ink-600 sm:inline">
             {me.data?.team.name}
           </span>
+          {live ? (
+            <ButtonLink
+              to={`/sessions/${live.id}/run`}
+              size="sm"
+              variant="secondary"
+              className="ml-1 max-w-[12rem] truncate"
+            >
+              <span aria-hidden>●</span> Live: {live.title}
+            </ButtonLink>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             <div className="relative hidden sm:block">
               <Input

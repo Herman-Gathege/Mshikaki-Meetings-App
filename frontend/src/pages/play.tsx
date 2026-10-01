@@ -537,7 +537,10 @@ function ResultsScreen({ data }: { data: GamePlay }) {
           <Card className="bg-ember-500 text-center text-ink-900">
             <p className="text-sm font-medium">🏆 Winner</p>
             <p className="text-3xl font-bold">{winner.player_name}</p>
-            <p className="text-lg">{winner.points} points</p>
+            <p className="text-lg">
+              {winner.points} points
+              {winner.correct_count > 0 ? ` · ${winner.correct_count} correct` : ""}
+            </p>
           </Card>
         ) : null}
 
@@ -549,7 +552,10 @@ function ResultsScreen({ data }: { data: GamePlay }) {
                 <span>
                   {["🥇", "🥈", "🥉"][index] ?? `${index + 1}.`} {score.player_name}
                 </span>
-                <span className="text-white/80">{score.points} points</span>
+                <span className="text-white/80">
+                  {score.points} points
+                  {score.correct_count > 0 ? ` · ${score.correct_count} correct` : ""}
+                </span>
               </li>
             ))}
             {ranked.length === 0 ? <li className="text-white/60">No scores were recorded.</li> : null}

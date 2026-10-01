@@ -193,6 +193,35 @@ report.game_answer_target_heights = await evaluate(
   "[...document.querySelectorAll('ul[aria-label=\"Answer options\"] button')].map(b => Math.round(b.getBoundingClientRect().height))",
 );
 
+// Text scaling: a person who has set a larger default font must not get a layout
+// that scrolls sideways or clips. rem units follow the browser preference.
+const OVERFLOW_CHECK = `(() => {
+  const width = window.innerWidth;
+  const offenders = [];
+  for (const node of document.querySelectorAll('body *')) {
+    const rect = node.getBoundingClientRect();
+    if (rect.width === 0) continue;
+    if (rect.right > width + 1) {
+      offenders.push((node.tagName + ' ' + String(node.className)).slice(0, 60));
+    }
+    if (offenders.length >= 8) break;
+  }
+  return { extraWidth: document.documentElement.scrollWidth - width, offenders };
+})()`;
+
+await send("Page.setFontSizes", { fontSizes: { standard: 24, fixed: 24 } });
+await send("Emulation.setDeviceMetricsOverride", {
+  width: 360,
+  height: 640,
+  deviceScaleFactor: 1,
+  mobile: true,
+});
+await goto("/", "document.querySelector('h1')");
+report.text_scaling_today = await evaluate(OVERFLOW_CHECK);
+await goto(`/play/${state.play}`, "document.body.innerText.includes('Question')");
+report.text_scaling_game = await evaluate(OVERFLOW_CHECK);
+await send("Page.setFontSizes", { fontSizes: { standard: 16, fixed: 13 } });
+
 console.log(JSON.stringify(report, null, 2));
 await fs.writeFile("/tmp/mshikaki-ux-report2.json", JSON.stringify(report, null, 2));
 socket.close();

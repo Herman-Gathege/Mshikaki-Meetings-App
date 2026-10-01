@@ -55,6 +55,12 @@ final run reports zero failures.
   sentence (an activity entry, "All 0"). They are treated as text, not controls,
   and the same destinations are reachable from the bottom navigation.
 
+## Text scaling (6F)
+
+With the browser's default font raised from 16px to 24px (which is what `rem`
+units follow) and a 360px viewport: no horizontal scrolling and no element
+pushed past the right edge on Today or on the game screen.
+
 ## Bad connection (6G)
 
 With Chrome throttled to 400 kbps and 400ms latency:

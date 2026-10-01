@@ -141,17 +141,42 @@ await pause(2500);
 note("3 after joining", await screen());
 
 // 3. They are in the meeting. Can they see how to start it?
-note("4 the meeting page", {
+note("4 the meeting page, as the newcomer", {
   url: await evaluate("location.pathname"),
   canStart: await evaluate("Boolean([...document.querySelectorAll('button')].find(b => /Start/i.test(b.innerText)))"),
   visibleToThem: await evaluate("document.body.innerText.includes('Herman') || document.body.innerText.includes('Anne')"),
 });
-await click("Start");
-await pause(2500);
-note("5 pressed start", await screen());
+
+// The newcomer is not the facilitator. They should be told who is, not shown a
+// button that refuses silently.
+note("5 who runs it", {
+  startOfferedToNewcomer: await evaluate(
+    "Boolean([...document.querySelectorAll('button')].find(b => /Start session/i.test(b.innerText)))",
+  ),
+  toldWhoRunsIt: await evaluate("/runs this meeting/.test(document.body.innerText)"),
+});
+
+// Now the facilitator takes the seat and runs the meeting.
+await send("Network.setCookie", {
+  name: "mshikaki_session",
+  value: state.host_cookie,
+  domain: "172.16.1.36",
+  path: "/",
+});
+await go(`/sessions/${state.session}`, "document.body.innerText.includes('Start session')");
+note("6 the facilitator's view", {
+  startOffered: await evaluate(
+    "Boolean([...document.querySelectorAll('button')].find(b => /Start session/i.test(b.innerText)))",
+  ),
+});
+await click("Start session");
+await pause(3000);
+note("6b pressed start", {
+  url: await evaluate("location.pathname"),
+});
 
 // 4. Run Mode. Pressing start should have taken them here.
-note("6 run mode", {
+note("7 run mode", {
   url: await evaluate("location.pathname"),
   steps: await evaluate("[...document.querySelectorAll('nav button')].map(b => b.innerText.trim())"),
   heading: await evaluate("document.querySelector('h2')?.innerText ?? null"),

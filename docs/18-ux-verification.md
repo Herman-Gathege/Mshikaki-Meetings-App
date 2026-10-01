@@ -92,6 +92,49 @@ The interface never shows a status code. Known failures map to a sentence
 ("Please use your work email address"), and an unexpected one says "Something
 went wrong on our side" with the reference to quote.
 
+## First-time rehearsal, by proxy (6J)
+
+`scripts/ux-first-time-walk.mjs` is the closest a machine can get to the plan's
+rehearsal: a clean browser with no cookie, someone arriving from the invite link
+and never having seen Mshikaki, walking the whole meeting. It cannot tell you
+whether the room enjoyed it. It can tell you whether the words and the buttons are
+there, and it found three real defects.
+
+| Found | What was wrong | Fixed |
+|---|---|---|
+| Pressing Start did nothing visible | It changed a badge and left the person on the same page, so the next step was invisible and the capture sheet was never reached | One button now starts the meeting and enters Run Mode |
+| A joiner was shown a button that refused silently | Starting a meeting belongs to the facilitator or an admin; everybody else saw the button, pressed it, and got no action and no explanation | Controls appear only for whoever can use them, everyone else is told who runs the meeting, and a refused start says so |
+| Joining twice dead-ended | Scanning again with an email that already has an account gave a conflict with nowhere to go | The join page names the situation and offers sign-in |
+
+The clean run, in order, as recorded by the script:
+
+```
+1  scanned the code          Joining Innovations e4acd6, name/email/password
+3  after joining             lands on the meeting page
+4  newcomer's view           not offered Start, sees who is present
+5  who runs it               told who runs the meeting: true
+6  facilitator's view        Start offered
+6b pressed start             /sessions/<id>/run
+7  run mode                  the five steps, 8 games, "Next: 💡 What are we thinking"
+7b capture                   sheet opens with the idea field
+8  captured an idea          lands on the idea
+9  decide                    "What did we decide?" with Park and Record decision
+10 recorded a decision       true
+11 assign                    Task, Owner and Due
+12 assigned a task           true
+13 close                     "🎉 That's a wrap!"
+14 closed the meeting        true
+15 minutes                   download offered, WhatsApp offered
+```
+
+Every screen in the walk also reports `leaks: []`: a scan for `undefined`, `NaN`,
+`[object Object]`, `Invalid Date`, `TypeError` and bare status codes in the
+rendered text. None appeared.
+
+What this still cannot tell you: whether a real person hesitates, whether the
+labels land, and whether the room wants to come back next week. That needs the
+person, and the checklist for them is in [17-ux.md](17-ux.md).
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

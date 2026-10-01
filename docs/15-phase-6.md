@@ -128,5 +128,8 @@ Open:
 - **6G** Partial. Run Mode and the game screen both hold at just over a second on
   throttled 3G, measured ([18-ux-verification.md](18-ux-verification.md)). Not yet
   tested on a real phone on a real KBC connection.
-- **6J** The human rehearsal. The checklist is in [17-ux.md](17-ux.md) and needs
-  a person who has never used Mshikaki.
+- **6J** Partial. A rehearsal by proxy walks the whole journey in a clean browser
+  and found three real defects, all fixed
+  ([18-ux-verification.md](18-ux-verification.md)). The human half - a person
+  hesitating, and whether the room wants to come back - still needs a person. The
+  checklist is in [17-ux.md](17-ux.md).

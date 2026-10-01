@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useCreateIdea } from "@/api/hooks";
 import { useSessions } from "@/api/hooks";
 import { Button, Field, Input, Modal, Select, Textarea } from "@/components/ui/kit";
+import { toast } from "@/components/toast";
 
 export function CaptureSheet({
   open,
@@ -39,6 +40,7 @@ export function CaptureSheet({
     setTitle("");
     setDescription("");
     onClose();
+    toast("💡 Idea added!");
     navigate(`/ideas/${idea.id}`);
   };
 

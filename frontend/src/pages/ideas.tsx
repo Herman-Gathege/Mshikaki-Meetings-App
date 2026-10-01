@@ -14,6 +14,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { OriginTrail } from "@/components/OriginTrail";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
+import { toast } from "@/components/toast";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
@@ -43,7 +44,10 @@ export function IdeasPage() {
       {ideas.isPending ? <LoadingState /> : null}
       {ideas.isError ? <ErrorState error={ideas.error} /> : null}
       {ideas.data?.items.length === 0 ? (
-        <EmptyState title="No ideas yet" body="Capture the first one with the + Idea button." />
+        <EmptyState
+          title="💡 The skewer is empty"
+          body="Throw the first idea on it. One line is enough."
+        />
       ) : null}
 
       <ul className="space-y-3">
@@ -114,7 +118,13 @@ export function IdeaPage() {
                   key={value}
                   variant="outline"
                   size="sm"
-                  onClick={() => void update.mutateAsync({ id: data.id, status: value })}
+                  onClick={() =>
+                    void update
+                      .mutateAsync({ id: data.id, status: value })
+                      .then(() =>
+                        toast(value === "accepted" ? "💡 Nice one!" : `Marked ${value}`),
+                      )
+                  }
                 >
                   Mark {value}
                 </Button>

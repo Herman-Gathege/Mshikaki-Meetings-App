@@ -22,6 +22,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { OriginTrail } from "@/components/OriginTrail";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
+import { toast } from "@/components/toast";
 import { Button, Card, Field, Input, Modal, Select, Textarea } from "@/components/ui/kit";
 import { formatDateTime, isOverdue } from "@/lib/dates";
 
@@ -92,8 +93,12 @@ export function WorkPage() {
         <ul className="space-y-3">
           {tasks.length === 0 ? (
             <EmptyState
-              title={tab === "mine" ? "Nothing assigned to you" : "No tasks yet"}
-              body="Tasks created in a session show up here."
+              title={tab === "mine" ? "🎯 Nothing to do yet" : "🎯 Nothing here yet"}
+              body={
+                tab === "mine"
+                  ? "Enjoy the peace while it lasts. Work assigned to you lands here."
+                  : "Tasks created in a meeting show up here."
+              }
             />
           ) : null}
           {tasks.map((task) => (
@@ -140,12 +145,18 @@ function TaskCard({ task, detailed = false }: { task: Task; detailed?: boolean }
             size="sm"
             variant="outline"
             disabled={change.isPending}
-            onClick={() =>
-              void change.mutateAsync({
-                id: task.id,
-                status: NEXT_STATUS[task.status] ?? "in_progress",
-              })
-            }
+            onClick={() => {
+              const next = NEXT_STATUS[task.status] ?? "in_progress";
+              void change.mutateAsync({ id: task.id, status: next }).then(() =>
+                toast(
+                  next === "done"
+                    ? "✅ Done!"
+                    : task.status === "done"
+                      ? "🔁 Reopened"
+                      : "▶ In progress",
+                ),
+              );
+            }}
           >
             {task.status === "done" ? "Reopen" : "Advance"}
           </Button>
@@ -165,7 +176,9 @@ function BlockersCard() {
     return (
       <Card>
         <h2 className="text-sm font-semibold text-ink-800">Blockers</h2>
-        <p className="mt-1 text-sm text-ink-600">Nothing is blocked right now.</p>
+        <p className="mt-1 text-sm text-ink-600">
+          🟢 Smooth sailing. Nothing is blocking the team.
+        </p>
       </Card>
     );
   }
@@ -195,6 +208,7 @@ function BlockersCard() {
                       .then(() => {
                         setOpen(null);
                         setResolution("");
+                        toast("🧯 Blocker cleared!");
                       });
                   }}
                 >
@@ -460,7 +474,11 @@ export function ProjectPage() {
                   <StatusBadge status={task.status} />
                 </li>
               ))}
-              {data.tasks.length === 0 ? <li className="text-sm text-ink-600">No tasks yet.</li> : null}
+              {data.tasks.length === 0 ? (
+                <li className="text-sm text-ink-600">
+                  🎯 Nothing here yet. Add the first piece of work.
+                </li>
+              ) : null}
             </ul>
             <div className="mt-3 flex gap-2">
               <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Add a task" />

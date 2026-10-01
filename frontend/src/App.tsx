@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 
 import { useMe } from "@/api/hooks";
 import { LoadingState } from "@/components/states";
+import { Toaster } from "@/components/toast";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { JoinPage } from "@/pages/JoinPage";
@@ -31,6 +32,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <Toaster />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/join/:code" element={<JoinPage />} />

@@ -1,9 +1,18 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+/**
+ * The list of meetings.
 
-import { useCreateSession, useSessions } from "@/api/hooks";
+ * Every row has exactly one obvious action, and it is the action that makes sense
+ * for that state: start a planned meeting, open a running one, read a finished one.
+ */
+
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
+import { useCreateSession, useSessionLifecycle, useSessions } from "@/api/hooks";
+import type { SessionListItem } from "@/api/types";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
+import { toast } from "@/components/toast";
 import { Button, Card, Field, Input, Modal, Textarea } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
@@ -31,82 +40,67 @@ export function SessionsPage() {
     setScheduledAt("");
     setLocation("");
     setOpen(false);
+    toast("🍢 Session planned!");
   };
 
   return (
     <>
       <PageHeader
-        title="Sessions"
+        title="🍢 Sessions"
         subtitle="Every meeting, and everything it produced."
-        actions={<Button onClick={() => setOpen(true)}>Plan a session</Button>}
+        actions={
+          <Button size="lg" onClick={() => setOpen(true)}>
+            Plan a session
+          </Button>
+        }
       />
 
-      {sessions.isPending ? <LoadingState /> : null}
+      {sessions.isPending ? <LoadingState label="Loading your meetings…" /> : null}
       {sessions.isError ? <ErrorState error={sessions.error} /> : null}
 
       {sessions.data?.items.length === 0 ? (
         <EmptyState
-          title="No sessions yet"
-          body="Plan the first one: a title, a date, and the agenda as lines of text."
-          action={<Button onClick={() => setOpen(true)}>Plan a session</Button>}
+          title="🍢 No Mshikaki planned yet"
+          body="Get the team together. A meeting needs a title, a time and an agenda."
+          action={<Button size="lg" onClick={() => setOpen(true)}>Plan a session</Button>}
         />
       ) : null}
 
       <ul className="space-y-3">
         {(sessions.data?.items ?? []).map((session) => (
-          <Card as="li" key={session.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <Link className="text-lg font-medium hover:underline" to={`/sessions/${session.id}`}>
-                  {session.title}
-                </Link>
-                <p className="text-sm text-ink-600">
-                  {formatDateTime(session.scheduled_at)}
-                  {session.location ? ` · ${session.location}` : ""}
-                  {session.facilitator ? ` · ${session.facilitator}` : ""}
-                </p>
-                <p className="mt-1 text-xs text-ink-400">
-                  {session.counts.ideas} ideas · {session.counts.decisions} decisions ·{" "}
-                  {session.counts.tasks} tasks · {session.counts.games} games
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={session.status} />
-                {session.status === "active" ? (
-                  <Link to={`/sessions/${session.id}/run`}>
-                    <Button size="sm">Run Mode</Button>
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          </Card>
+          <SessionRow key={session.id} session={session} />
         ))}
       </ul>
 
       <Modal open={open} title="Plan a session" onClose={() => setOpen(false)}>
         <div className="space-y-4">
-          <Field label="Title" hint="Leave blank and we will number it for you.">
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+          <Field label="What are we calling it?" hint="Leave it blank and Mshikaki numbers it.">
+            <Input
+              autoFocus
+              value={title}
+              placeholder="Innovations weekly catch-up"
+              onChange={(event) => setTitle(event.target.value)}
+            />
           </Field>
-          <Field label="When">
+          <Field label="When?">
             <Input
               type="datetime-local"
               value={scheduledAt}
               onChange={(event) => setScheduledAt(event.target.value)}
             />
           </Field>
-          <Field label="Where">
+          <Field label="Where?">
             <Input
               value={location}
               placeholder="Boardroom, or online"
               onChange={(event) => setLocation(event.target.value)}
             />
           </Field>
-          <Field label="Agenda" hint="One item per line. You can add or reorder later.">
+          <Field label="Agenda" hint="One item per line. You can change it later.">
             <Textarea
               rows={4}
               value={agenda}
-              placeholder={"Icebreaker\nAutomation ideas\nAssignments"}
+              placeholder={"Warm up\nAutomation ideas\nAssignments"}
               onChange={(event) => setAgenda(event.target.value)}
             />
           </Field>
@@ -114,12 +108,72 @@ export function SessionsPage() {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => void submit()} disabled={create.isPending}>
-              {create.isPending ? "Creating..." : "Create session"}
+            <Button size="lg" onClick={() => void submit()} disabled={create.isPending}>
+              {create.isPending ? "Creating…" : "Create the meeting"}
             </Button>
           </div>
         </div>
       </Modal>
     </>
+  );
+}
+
+function SessionRow({ session }: { session: SessionListItem }) {
+  const lifecycle = useSessionLifecycle(session.id);
+  const navigate = useNavigate();
+  const { ideas, decisions, tasks, games } = session.counts;
+
+  const startAndRun = async () => {
+    await lifecycle.start.mutateAsync();
+    toast("🍢 Session started!");
+    navigate(`/sessions/${session.id}/run`);
+  };
+
+  return (
+    <Card as="li">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <Link className="text-lg font-medium hover:underline" to={`/sessions/${session.id}`}>
+            {session.title}
+          </Link>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-600">
+            <StatusBadge status={session.status} />
+            {formatDateTime(session.scheduled_at)}
+            {session.location ? ` · ${session.location}` : ""}
+            {session.facilitator ? ` · ${session.facilitator}` : ""}
+          </p>
+          <p className="mt-1 text-sm text-ink-600">
+            {session.status === "completed"
+              ? `What happened: ${ideas} ideas, ${decisions} decisions, ${tasks} tasks, ${games} games`
+              : `${ideas} ideas · ${decisions} decisions · ${tasks} tasks · ${games} games so far`}
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          {session.status === "planned" ? (
+            <Button size="lg" onClick={() => void startAndRun()} disabled={lifecycle.start.isPending}>
+              {lifecycle.start.isPending ? "Starting…" : "Start →"}
+            </Button>
+          ) : null}
+          {session.status === "active" ? (
+            <Link to={`/sessions/${session.id}/run`}>
+              <Button size="lg">Run Mode →</Button>
+            </Link>
+          ) : null}
+          {session.status === "paused" ? (
+            <Link to={`/sessions/${session.id}/run`}>
+              <Button size="lg">Resume →</Button>
+            </Link>
+          ) : null}
+          {session.status === "completed" ? (
+            <Link to={`/sessions/${session.id}`}>
+              <Button size="lg" variant="outline">
+                Read what happened →
+              </Button>
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </Card>
   );
 }

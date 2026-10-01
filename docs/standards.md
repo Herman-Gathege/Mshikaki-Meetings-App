@@ -86,3 +86,15 @@ db/          models and session handling
 - One logical change per commit, imperative subject, body explaining why.
 - `make check` passes before the commit.
 - Migrations and the model changes they support ship together.
+
+## UX
+
+- **If a user needs to understand the domain model to know which button to
+  press, the UX has failed.** Say "Who's doing this?", not "Assign task owner".
+- Every screen answers: what am I doing, what just happened, what do I do next.
+- No technical error text in front of a user. Human sentence on screen, code in
+  the logs.
+- Never communicate a state with colour alone. Pair it with an icon or a word.
+- Nothing is displayed that the system does not actually store.
+- [17-ux.md](17-ux.md) is the full reference for voice, spacing and the game
+  lifecycle.

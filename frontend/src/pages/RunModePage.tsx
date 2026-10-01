@@ -24,6 +24,7 @@ import {
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { StatusBadge } from "@/components/badges";
 import { LoadingState, ErrorState } from "@/components/states";
+import { toast } from "@/components/toast";
 import { Button, Card, Field, Input, Select } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
@@ -412,7 +413,7 @@ function CloseStep({ sessionId }: { sessionId: string }) {
 
   return (
     <Card className="bg-white/5 text-white">
-      <h2 className="text-3xl font-semibold">Wrap it up</h2>
+      <h2 className="text-3xl font-semibold">🎉 That's a wrap!</h2>
       <p className="mt-2 text-white/70">
         Closing writes the summary from everything that happened. Nobody takes minutes.
       </p>
@@ -463,7 +464,9 @@ function CloseStep({ sessionId }: { sessionId: string }) {
           size="xl"
           className="mt-5"
           disabled={lifecycle.close.isPending}
-          onClick={() => void lifecycle.close.mutateAsync()}
+          onClick={() =>
+            void lifecycle.close.mutateAsync().then(() => toast("🎉 Session wrapped up!"))
+          }
         >
           {lifecycle.close.isPending ? "Closing..." : "Close the session and write the summary"}
         </Button>

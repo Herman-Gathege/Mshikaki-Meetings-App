@@ -16,6 +16,7 @@ import {
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
+import { toast } from "@/components/toast";
 import { Button, Card, Input } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
@@ -99,7 +100,7 @@ function CloseButton({ sessionId }: { sessionId: string }) {
   return (
     <Button
       variant="outline"
-      onClick={() => void lifecycle.close.mutateAsync()}
+      onClick={() => void lifecycle.close.mutateAsync().then(() => toast("🎉 That's a wrap!"))}
       disabled={lifecycle.close.isPending}
     >
       {lifecycle.close.isPending ? "Closing..." : "Close session"}

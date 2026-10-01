@@ -135,6 +135,32 @@ What this still cannot tell you: whether a real person hesitates, whether the
 labels land, and whether the room wants to come back next week. That needs the
 person, and the checklist for them is in [17-ux.md](17-ux.md).
 
+## The returning user, and the origin of the join flow
+
+`scripts/ux-returning-user-walk.mjs` covers the paths the other walks skip: it
+signs in through the form rather than planting a cookie, and it creates the invite
+through the Team page rather than through the API, which is where the whole join
+flow actually begins.
+
+| Step | Observed |
+|---|---|
+| Opening the app signed out | Lands on the sign-in page |
+| Signing in | Lands on Today, "👋 Today's Mshikaki" |
+| Team page | Heading, invite control, seven members listed |
+| Creating a code | The code, the join link, a QR drawn in the page, and a "Show big for the room" button |
+| The projector view | Opens as a dialog, says "Scan to join", the QR renders 281px across, a Close button is offered |
+| Pressing Escape | Closes it and leaves you on the Team page, nothing else disturbed |
+| Bragging rights | Standings render with the disclaimer |
+| Activity | Reads as sentences: "Herman closed the session: 1 idea(s), 1 decision(s), 1 task(s)", "Herman earned 15 XP for Won a game" |
+
+No leaked debug text on any of those screens either.
+
+Two frictions the walk surfaced but did not change. The sign-in page has a mode tab
+and a submit button both labelled "Sign in"; they look different but they read the
+same, and a person scanning quickly could tap the tab and wonder why nothing
+happened. And Run Mode's step labels wrap to two lines on a 390px phone, which is
+fine for the facilitator's fallback but is worth knowing before a real session.
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

@@ -129,7 +129,9 @@ Open:
   throttled 3G, measured ([18-ux-verification.md](18-ux-verification.md)). Not yet
   tested on a real phone on a real KBC connection.
 - **6J** Partial. A rehearsal by proxy walks the whole journey in a clean browser
-  and found three real defects, all fixed
+  and found three real defects, all fixed. A second walk covers the returning
+  user: signing in, creating the invite and its QR on the Team page, the projector
+  view, the leaderboard and the activity trail
   ([18-ux-verification.md](18-ux-verification.md)). The human half - a person
   hesitating, and whether the room wants to come back - still needs a person. The
   checklist is in [17-ux.md](17-ux.md).

@@ -196,7 +196,7 @@ export function GamePlayPage() {
 
   if (data.total === 0 && data.game.family !== "host_scored") {
     return (
-      <div className="mx-auto max-w-2xl p-6">
+      <main className="mx-auto max-w-2xl p-6">
         <PageHeader title={data.game.name} subtitle="This game has no questions loaded" />
         <EmptyState
           title="No questions came with this game"
@@ -212,7 +212,7 @@ export function GamePlayPage() {
             </div>
           }
         />
-      </div>
+      </main>
     );
   }
 
@@ -254,7 +254,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
 
   return (
     <div className="min-h-dvh bg-ink-900 px-4 py-6 text-white">
-      <div className="mx-auto max-w-4xl space-y-5">
+      <main className="mx-auto max-w-4xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs tracking-widest text-white/50 uppercase">
@@ -277,9 +277,9 @@ function QuestionScreen({ data }: { data: GamePlay }) {
 
         <Card className="bg-white/5 text-white">
           <div className="flex items-start justify-between gap-4">
-            <p className="text-2xl leading-snug font-semibold sm:text-4xl">
+            <h2 className="text-2xl leading-snug font-semibold sm:text-4xl">
               {question?.prompt ?? "Run the activity, then score it below."}
-            </p>
+            </h2>
             {choices.length > 0 && !revealed ? (
               <div
                 role="timer"
@@ -448,7 +448,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
             </Button>
           </div>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }
@@ -524,7 +524,7 @@ function ResultsScreen({ data }: { data: GamePlay }) {
 
   return (
     <div className="min-h-dvh bg-ink-900 px-4 py-8 text-white">
-      <div className="mx-auto max-w-3xl space-y-5">
+      <main className="mx-auto max-w-3xl space-y-5">
         <div className="text-center">
           <p className="text-5xl">🎉</p>
           <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">Game complete!</h1>
@@ -581,7 +581,7 @@ function ResultsScreen({ data }: { data: GamePlay }) {
             </Button>
           </Link>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

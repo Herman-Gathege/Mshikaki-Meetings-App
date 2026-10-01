@@ -114,6 +114,30 @@ The same behaviour is covered on the server side in
 `backend/tests/integration/test_game_and_minutes.py`, which also checks that
 finishing twice does not award XP twice.
 
+## The acceptance walk (Phase 6, section 39)
+
+`scripts/ux-meeting-walkthrough.mjs` walks the steps of the plan's acceptance
+test that the game-flow script does not cover. Last run, on the deployed app,
+with a finished meeting that produced an idea, a decision and a task:
+
+| Step | Observed |
+|---|---|
+| Enter Mshikaki | Today leads with the next meeting; the finished one appears under "From the last session" as "1 ideas · 1 decisions · 1 tasks" |
+| Why does this exist | The task page offers **Decision** and **Session**; the decision offers the **Idea** and the session; the idea is marked converted and points back at the session |
+| Close | The meeting reads as completed, with its summary |
+| Minutes | A download link to `minutes.html` and the WhatsApp copy button |
+| Final question | At question 18 of 18 the button becomes "See results →" |
+
+Two defects were found by walking it rather than reasoning about it:
+
+1. **The minutes download button did not exist.** The endpoint worked and the
+   text export was there, so nothing looked wrong in the API; the button was
+   simply never added to the summary tab by an earlier failed patch. Fixed.
+2. **Buttons were nested inside links** in twelve places, which is invalid HTML
+   and makes a screen reader announce one control twice. A `ButtonLink`
+   primitive now renders a single element, and Today's controls are down to the
+   three that are genuinely buttons.
+
 ## Bad connection (6G)
 
 With Chrome throttled to 400 kbps and 400ms latency:

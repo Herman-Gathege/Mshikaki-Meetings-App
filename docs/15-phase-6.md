@@ -108,7 +108,8 @@ Done and verified on the deployed app:
   meeting. No per-phone realtime. Driven end to end in a browser by
   `scripts/ux-game-flow.mjs` and on the server by the integration tests.
 - **6E** Nine-section minutes generated from the frozen summary, downloadable as
-  a printable document, with the WhatsApp text export kept.
+  a printable document, with the WhatsApp text export kept. The download button
+  was missing until the acceptance walk found it.
 - **6H** Append-only enforced by database trigger on `activity` and
   `xp_events`, refused actions recorded for admins, tenancy and permission tests
   in the suite, and the permission matrix unit-tested.

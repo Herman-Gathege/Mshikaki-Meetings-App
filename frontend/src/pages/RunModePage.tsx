@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
+  useContentPacks,
   useCreateTask,
   useGames,
   useIdeas,
@@ -57,6 +58,7 @@ export function RunModePage() {
   // Poll while the meeting runs: this is how the room converges on the stage.
   const session = useSession(sessionId, 4000);
   const me = useMe();
+  const room = useSessionParticipants(sessionId ?? "");
   const navigate = useNavigate();
   const lifecycle = useSessionLifecycle(sessionId ?? "");
   const [draftStage, setDraftStage] = useState<Step | null>(null);
@@ -146,6 +148,9 @@ export function RunModePage() {
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="rounded-full bg-white/10 px-3 py-1">
+              {room.data?.items.length ?? 0} in the room
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1">
               {data.counts.ideas} ideas · {data.counts.decisions} decisions · {data.counts.tasks} tasks
             </span>
             <ButtonLink
@@ -162,7 +167,9 @@ export function RunModePage() {
 
       {canDrive ? null : (
         <p className="mx-auto max-w-5xl px-5 pt-4 text-lg text-white/70">
-          You're in the meeting. Follow along with the facilitator. 🍢
+          You're in <strong className="text-white">{data.title}</strong>
+          {data.facilitator ? ` with ${data.facilitator.name}` : ""}. Follow along — the screen
+          moves with the room until that's a wrap. 🍢
         </p>
       )}
 
@@ -264,9 +271,11 @@ export function RunModePage() {
 
 function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boolean }) {
   const games = useGames();
+  const packs = useContentPacks();
   const startPlay = useStartPlay(session.id);
   const navigate = useNavigate();
   const [gameKey, setGameKey] = useState("");
+  const [packId, setPackId] = useState("");
   // Remembered across screens: somebody who deliberately steps back out of a
   // game is not dragged in again, but a new game still pulls them in.
   const joinedKey = `mshikaki.joined.${session.id}`;
@@ -274,6 +283,15 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
 
   const running = session.games.find((game) => game.status === "running");
   const quickGames = (games.data?.items ?? []).filter((game) => game.typical_minutes <= 15);
+  const chosen = quickGames.find((game) => game.key === gameKey) ?? quickGames[0];
+  const packsForGame = (packs.data?.items ?? []).filter((pack) => pack.game_key === chosen?.key);
+  // A quiz with no questions is an empty room. Ask for the pack here, so the
+  // facilitator never has to leave the meeting to start a real game.
+  const needsPack = Boolean(chosen) && chosen?.family !== "host_scored";
+
+  useEffect(() => {
+    setPackId(packsForGame[0]?.id ?? "");
+  }, [chosen?.key, packsForGame.length]);
 
   // A game that is running is a game everybody plays. Pull each person onto the
   // question screen once per game, so nobody is left looking at a notice while
@@ -308,9 +326,11 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
   }
 
   const start = async () => {
-    const pick = gameKey || quickGames[0]?.key;
-    if (!pick) return;
-    const play = await startPlay.mutateAsync({ game_key: pick });
+    if (!chosen) return;
+    const play = await startPlay.mutateAsync({
+      game_key: chosen.key,
+      content_pack_id: packId || undefined,
+    });
     navigate(`/play/${play.id}`);
   };
 
@@ -321,11 +341,23 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
         Pick something short and get people laughing. The games are not work-related on purpose.
       </p>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      {running ? (
+        <div className="mt-4 rounded-xl border border-ember-500/40 bg-ember-500/10 p-3">
+          <p className="text-sm text-white/80">
+            A game is running. The room is in it — go back to the question screen when you are
+            ready. Starting another game ends this one for everybody.
+          </p>
+          <ButtonLink to={`/play/${running.id}`} size="lg" className="mt-2">
+            Back to the game →
+          </ButtonLink>
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <Field label="Game">
           <Select
             className="bg-white text-ink-900"
-            value={gameKey}
+            value={chosen?.key ?? ""}
             onChange={(event) => setGameKey(event.target.value)}
           >
             {quickGames.map((game) => (
@@ -335,12 +367,40 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
             ))}
           </Select>
         </Field>
+        <Field
+          label="Questions from"
+          hint={needsPack ? "The room answers these on their phones." : "You score this one yourself."}
+        >
+          <Select
+            className="bg-white text-ink-900"
+            value={packId}
+            onChange={(event) => setPackId(event.target.value)}
+            disabled={!needsPack}
+          >
+            {needsPack ? null : <option value="">No questions — you run it</option>}
+            {packsForGame.map((pack) => (
+              <option key={pack.id} value={pack.id}>
+                {pack.title} · {pack.items} questions
+              </option>
+            ))}
+          </Select>
+        </Field>
         <div className="flex items-end">
-          <Button size="xl" className="w-full" onClick={() => void start()} disabled={startPlay.isPending}>
+          <Button
+            size="xl"
+            className="w-full"
+            onClick={() => void start()}
+            disabled={!chosen || (needsPack && !packId) || startPlay.isPending}
+          >
             {startPlay.isPending ? "Starting..." : "Start the game"}
           </Button>
         </div>
       </div>
+      {needsPack && !packId ? (
+        <p className="mt-3 text-sm text-red-200">
+          Pick a question pack — a quiz with no questions would leave the room waiting.
+        </p>
+      ) : null}
 
       <div className="mt-5 grid gap-2 sm:grid-cols-3">
         {quickGames.slice(0, 6).map((game) => (

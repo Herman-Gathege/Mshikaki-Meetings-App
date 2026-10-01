@@ -196,16 +196,44 @@ export function GamePlayPage() {
   const play = usePlay(playId);
   const me = useMe();
   const actions = useGameActions(playId ?? "");
+  const navigate = useNavigate();
+  const role = me.data?.role;
+  const stale = play.data?.status === "abandoned";
+
+  // The facilitator moved on to another game. Put the room back in the meeting,
+  // which walks it straight into whatever is running now - nobody is left
+  // sitting in a game that ended.
+  useEffect(() => {
+    const sessionId = play.data?.session_id;
+    if (!stale || !sessionId) return;
+    navigate(`/sessions/${sessionId}/run`, { replace: true });
+  }, [stale, play.data?.session_id, navigate]);
 
   if (play.isPending) return <LoadingState label="Getting the game ready…" />;
   if (play.isError) return <ErrorState error={play.error} onRetry={() => play.refetch()} />;
   if (!play.data) return null;
   const data = play.data;
 
-  const role = me.data?.role;
   const canDrive = Boolean(
     data.host_id === me.data?.user.id || role === "owner" || role === "admin",
   );
+
+  if (stale) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-ink-900 px-5 text-white">
+        <Card className="max-w-lg bg-white/5 text-center text-white">
+          <p className="text-4xl">🎲</p>
+          <h1 className="mt-3 text-2xl font-semibold">This game has moved on</h1>
+          <p className="mt-2 text-white/70">
+            The facilitator started another one. Taking you there…
+          </p>
+          <ButtonLink to={`/sessions/${data.session_id}/run`} size="lg" className="mt-4">
+            Back to the meeting →
+          </ButtonLink>
+        </Card>
+      </div>
+    );
+  }
 
   if (data.total === 0 && data.game.family !== "host_scored") {
     if (!canDrive) {
@@ -217,6 +245,9 @@ export function GamePlayPage() {
             <p className="mt-2 text-white/70">
               This game came without questions. The facilitator will sort that out.
             </p>
+            <ButtonLink to={`/sessions/${data.session_id}/run`} size="lg" className="mt-4">
+              Back to the meeting →
+            </ButtonLink>
           </Card>
         </PlayerShell>
       );
@@ -316,6 +347,7 @@ function PlayerShell({ data, children }: { data: GamePlay; children: ReactNode }
           <div>
             <p className="text-xs tracking-widest text-white/50 uppercase">
               Playing · {data.pack?.title ?? data.game.name}
+              {data.host_name ? ` · following ${data.host_name}` : ""}
             </p>
             <h1 className="text-xl font-semibold">{data.game.name}</h1>
           </div>

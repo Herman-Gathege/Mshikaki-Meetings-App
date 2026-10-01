@@ -236,6 +236,8 @@ export interface GamePlay {
   id: string;
   session_id: string;
   host_id: string | null;
+  /** Who the room is following while this game runs. */
+  host_name: string | null;
   game: { key: string; name: string; family: GameFamily; how_to_play: string | null };
   pack: { id: string; title: string } | null;
   status: string;

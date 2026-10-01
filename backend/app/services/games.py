@@ -37,6 +37,11 @@ from app.domain.enums import GameFamily, GamePlayStatus, ParticipantRole
 from app.errors import AppError, NotFoundError
 from app.services.activity import record_activity
 
+# Families whose questions come from a pack. Starting one without a pack makes an
+# empty game, which is how a room ends up staring at "no questions came with this
+# game" while the facilitator hunts through a menu.
+_NEEDS_QUESTIONS = frozenset({GameFamily.PROMPT_DECK.value, GameFamily.HOST_QUIZ.value})
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -135,6 +140,22 @@ def create_play(
         ]
         question_order = ids
 
+    if definition.family in _NEEDS_QUESTIONS and not question_order:
+        raise AppError(
+            "This game asks questions, so it needs a pack with questions in it.",
+            code="game.needs_pack",
+        )
+
+    # One meeting, one live game. Switching games used to leave the old one
+    # running, so the room stayed on a game the facilitator had walked away from.
+    for previous in db.execute(
+        select(GamePlay).where(
+            GamePlay.session_id == session.id,
+            GamePlay.status == GamePlayStatus.RUNNING.value,
+        )
+    ).scalars():
+        abandon_play(db, play=previous, session=session, actor=actor, actor_name=actor_name)
+
     play = GamePlay(
         session_id=session.id,
         game_definition_key=definition.key,
@@ -219,6 +240,7 @@ def play_state(db: DbSession, play: GamePlay, *, actor=None) -> dict:
     pack = db.get(ContentPack, play.content_pack_id) if play.content_pack_id else None
     question = current_question(db, play)
     total = len(play.question_order or [])
+    host = db.get(User, play.host_id) if play.host_id else None
     now = _now()
     revealed = play.revealed_at is not None
     sees_the_answer = revealed or _may_see_the_answer(db, play, actor)
@@ -252,6 +274,7 @@ def play_state(db: DbSession, play: GamePlay, *, actor=None) -> dict:
         "id": str(play.id),
         "session_id": str(play.session_id),
         "host_id": str(play.host_id) if play.host_id else None,
+        "host_name": host.display_name if host else None,
         "game": {
             "key": play.game_definition_key,
             "name": definition.name if definition else play.game_definition_key,

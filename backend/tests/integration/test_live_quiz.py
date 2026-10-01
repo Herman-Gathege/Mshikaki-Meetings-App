@@ -172,3 +172,52 @@ async def test_answering_is_refused_when_the_question_is_closed(
     )
     assert refused.status_code == 400
     assert refused.json()["error"]["code"] == "game.too_late"
+
+
+async def test_a_quiz_without_a_pack_is_refused(client: AsyncClient, unique_suffix: str) -> None:
+    """The empty game the room got stuck on must not be creatable."""
+    await _register(
+        client,
+        email=f"nopack.{unique_suffix}@kbc.co.ke",
+        name="Host",
+        team=f"No pack {unique_suffix}",
+    )
+    session = (await client.post("/api/sessions", json={"title": "No pack"})).json()
+    await client.post(f"/api/sessions/{session['id']}/start")
+
+    refused = await client.post(
+        f"/api/sessions/{session['id']}/games", json={"game_key": "trivia-kenya"}
+    )
+    assert refused.status_code == 400, refused.text
+    assert refused.json()["error"]["code"] == "game.needs_pack"
+
+    # A game the host runs themselves still needs no pack.
+    scored = await client.post(
+        f"/api/sessions/{session['id']}/games", json={"game_key": "hosted-activity"}
+    )
+    assert scored.status_code == 200, scored.text
+
+
+async def test_starting_a_game_replaces_the_one_that_was_running(
+    client: AsyncClient, unique_suffix: str
+) -> None:
+    """One meeting, one live game: the room must never be left on a stale one."""
+    await _register(
+        client,
+        email=f"replace.{unique_suffix}@kbc.co.ke",
+        name="Host",
+        team=f"Replace {unique_suffix}",
+    )
+    session = (await client.post("/api/sessions", json={"title": "Replace"})).json()
+    await client.post(f"/api/sessions/{session['id']}/start")
+
+    first = await _quiz_play(client, session["id"])
+    second = await _quiz_play(client, session["id"])
+
+    assert (await client.get(f"/api/game-plays/{first['id']}")).json()["status"] == "abandoned"
+    detail = (await client.get(f"/api/sessions/{session['id']}")).json()
+    running = [game for game in detail["games"] if game["status"] == "running"]
+    assert [game["id"] for game in running] == [second["id"]]
+
+    # The room can tell who is driving the game it is following.
+    assert (await client.get(f"/api/game-plays/{second['id']}")).json()["host_name"] == "Host"

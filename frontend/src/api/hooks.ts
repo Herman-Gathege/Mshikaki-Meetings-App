@@ -267,6 +267,9 @@ export function useSessionParticipants(sessionId: string) {
   return useQuery({
     queryKey: ["participants", sessionId],
     queryFn: () => apiFetch<Items<Participant>>(`/sessions/${sessionId}/participants`),
+    // Who is in the room is part of following a meeting, so it stays fresh
+    // without anybody refreshing.
+    refetchInterval: 10000,
   });
 }
 

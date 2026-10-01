@@ -117,8 +117,11 @@ Done and verified on the deployed app:
 
 Open:
 
-- **6F** Keyboard and contrast verification on a real projector, and text
-  scaling. Targets and labels are in place; the checks are not.
-- **6G** Throttled-network timings for Run Mode and the game screen.
+- **6F** Partial. Keyboard focus and contrast are measured and passing
+  ([18-ux-verification.md](18-ux-verification.md)). Still to do: a real
+  projector, a real phone, text scaling and a screen reader.
+- **6G** Partial. Run Mode and the game screen both hold at just over a second on
+  throttled 3G, measured ([18-ux-verification.md](18-ux-verification.md)). Not yet
+  tested on a real phone on a real KBC connection.
 - **6J** The human rehearsal. The checklist is in [17-ux.md](17-ux.md) and needs
   a person who has never used Mshikaki.

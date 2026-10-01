@@ -187,6 +187,27 @@ field is in the DOM at phone width while being invisible, so a script that types
 into "the first input" writes into nothing. A person cannot make that mistake
 because they type where they can see. Worth knowing for anyone writing a test here.
 
+## Prompt decks, the other playable family
+
+Every earlier game walk used a quiz. Rapid Fire and the other decks render
+differently, and opening one found a wart: a deck has no right answer, but the host
+was offered **"Reveal the answer"**, and pressing it printed *"Answer:"* followed by
+*"Correct answer: —"* on the projector.
+
+Now, on a deck:
+
+```
+card        : Name three things you would grab if the office caught fire.
+progress    : Question 1 of 18
+option cards: 0
+timer shown : false
+buttons     : ['+10', 'Fix', '← Back', 'Next question →', 'End the game']
+```
+
+No reveal, scoring available immediately, and the screen says what to do instead:
+read the card aloud, score whoever answered well, move on. The quiz path is
+unchanged and still gated behind the reveal, as host-paced scoring requires.
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

@@ -108,7 +108,9 @@ Done and verified on the deployed app:
 - **6D** The full question lifecycle: options, local timer, single locked answer,
   reveal with the correct answer, host scoring, results, and Continue the
   meeting. No per-phone realtime. Driven end to end in a browser by
-  `scripts/ux-game-flow.mjs` and on the server by the integration tests.
+  `scripts/ux-game-flow.mjs` and on the server by the integration tests. Prompt
+  decks follow the same screen without a reveal, because there is no answer to
+  reveal.
 - **6E** Nine-section minutes generated from the frozen summary, downloadable as
   a printable document, with the WhatsApp text export kept. The download button
   was missing until the acceptance walk found it.

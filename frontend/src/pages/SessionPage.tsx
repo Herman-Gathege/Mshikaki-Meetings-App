@@ -17,7 +17,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { toast } from "@/components/toast";
-import { Button, ButtonLink, Card, Input } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Input } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
 const TABS = ["Overview", "Agenda", "Ideas", "Tasks", "Summary", "Activity"] as const;
@@ -110,6 +110,7 @@ function Overview({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const data = session.data;
   if (!data) return null;
+  const cancellable = ["planned", "active", "paused"].includes(data.status);
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Card>
@@ -133,7 +134,50 @@ function Overview({ sessionId }: { sessionId: string }) {
           {data.has_summary ? "The summary was generated at close." : "No summary yet."}
         </p>
       </Card>
+      {cancellable ? <CancelMeeting sessionId={sessionId} /> : null}
     </div>
+  );
+}
+
+/** A meeting that is not going to happen. It stays in the record either way. */
+function CancelMeeting({ sessionId }: { sessionId: string }) {
+  const lifecycle = useSessionLifecycle(sessionId);
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+
+  if (!open) {
+    return (
+      <Card className="sm:col-span-2">
+        <p className="text-sm text-ink-600">
+          Not going ahead? Cancelling keeps the meeting in the record with the reason.
+        </p>
+        <Button variant="danger" size="sm" className="mt-2" onClick={() => setOpen(true)}>
+          Cancel this meeting
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="sm:col-span-2">
+      <Field label="Why is it cancelled?" hint="Optional, and it goes in the record.">
+        <Input value={reason} onChange={(event) => setReason(event.target.value)} />
+      </Field>
+      <div className="mt-3 flex gap-2">
+        <Button
+          variant="danger"
+          disabled={lifecycle.cancel.isPending}
+          onClick={() =>
+            void lifecycle.cancel.mutateAsync(reason).then(() => toast("🚫 Meeting cancelled"))
+          }
+        >
+          {lifecycle.cancel.isPending ? "Cancelling…" : "Yes, cancel it"}
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)}>
+          Keep it
+        </Button>
+      </div>
+    </Card>
   );
 }
 

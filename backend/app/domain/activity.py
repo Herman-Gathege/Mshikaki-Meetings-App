@@ -46,6 +46,7 @@ VERBS: dict[str, VerbSpec] = {
         "closed the session: {ideas} idea(s), {decisions} decision(s), {tasks} task(s)",
     ),
     "session.reopened": V("session.reopened", "reopened the session: {reason}"),
+    "session.cancelled": V("session.cancelled", "cancelled the meeting: {reason}"),
     "session.participant_joined": V(
         "session.participant_joined", "joined the session as {role}", xp_rule="attend_session"
     ),

@@ -301,7 +301,7 @@ def _lifecycle(
     elif target == SessionStatus.PAUSED.value:
         verb, payload = "session.paused", {}
     elif target == SessionStatus.CANCELLED.value:
-        verb, payload = "session.updated", {"title": session.title, "note": "cancelled"}
+        verb, payload = "session.cancelled", {"reason": reason or "no reason given"}
     else:
         verb, payload = "session.updated", {"title": session.title}
 
@@ -362,6 +362,20 @@ def reopen_session(
         db,
         session=session,
         target=SessionStatus.ACTIVE.value,
+        actor=actor,
+        actor_name=actor_name,
+        reason=reason,
+    )
+
+
+def cancel_session(
+    db: DbSession, *, session: MeetingSession, actor, actor_name: str, reason: str | None = None
+) -> MeetingSession:
+    """A meeting that is not happening. Recorded, with the reason if one is given."""
+    return _lifecycle(
+        db,
+        session=session,
+        target=SessionStatus.CANCELLED.value,
         actor=actor,
         actor_name=actor_name,
         reason=reason,

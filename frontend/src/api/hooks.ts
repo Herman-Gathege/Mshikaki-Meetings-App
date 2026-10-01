@@ -250,6 +250,10 @@ export function useSessionLifecycle(sessionId: string) {
       mutationFn: (reason: string) => action("reopen", { reason }),
       onSuccess: () => invalidate(["sessions", "today"]),
     }),
+    cancel: useMutation({
+      mutationFn: (reason?: string) => action("cancel", { reason: reason || undefined }),
+      onSuccess: () => invalidate(["sessions", "today"]),
+    }),
   };
 }
 

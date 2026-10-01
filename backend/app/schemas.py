@@ -75,6 +75,10 @@ class ReopenRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=300)
 
 
+class CancelRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=300)
+
+
 class ParticipantRequest(BaseModel):
     user_id: uuid.UUID | None = None
     guest_id: uuid.UUID | None = None

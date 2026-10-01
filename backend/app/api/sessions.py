@@ -15,6 +15,7 @@ from app.errors import AppError, PermissionDeniedError
 from app.schemas import (
     AgendaRequest,
     AttendanceRequest,
+    CancelRequest,
     ParticipantRequest,
     ReopenRequest,
     SessionCreateRequest,
@@ -173,6 +174,26 @@ def reopen_session(
     ensure_lifecycle(context, session, "start")
     meetings.reopen_session(
         db, session=session, actor=context.actor, actor_name=context.name, reason=payload.reason
+    )
+    return meetings.session_detail(db, session)
+
+
+@router.post("/sessions/{session_id}/cancel")
+def cancel_session(
+    session_id: uuid.UUID,
+    payload: CancelRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """A meeting that is not going to happen. Kept in the record, with the reason."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_lifecycle(context, session, "close")
+    meetings.cancel_session(
+        db,
+        session=session,
+        actor=context.actor,
+        actor_name=context.name,
+        reason=payload.reason,
     )
     return meetings.session_detail(db, session)
 

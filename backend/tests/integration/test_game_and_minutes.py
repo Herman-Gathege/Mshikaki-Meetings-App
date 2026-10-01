@@ -107,6 +107,23 @@ async def test_session_can_pause_resume_and_cancel(client: AsyncClient, unique_s
     assert other["status"] == "planned"
     assert other["sequence_no"] == 2
 
+    # And a meeting that will not happen can be cancelled, with a reason in the record.
+    cancelled = (
+        await client.post(
+            f"/api/sessions/{other['id']}/cancel",
+            json={"reason": "Half the team is in the field"},
+        )
+    ).json()
+    assert cancelled["status"] == "cancelled"
+
+    trail = (await client.get(f"/api/sessions/{other['id']}/activity")).json()["items"]
+    cancellation = next(item for item in trail if item["verb"] == "session.cancelled")
+    assert "Half the team is in the field" in cancellation["sentence"]
+
+    # A cancelled meeting must not block the next one.
+    after = (await client.post("/api/sessions", json={"title": "Third"})).json()
+    assert after["status"] == "planned"
+
 
 async def test_minutes_are_frozen_complete_and_downloadable(
     client: AsyncClient, unique_suffix: str

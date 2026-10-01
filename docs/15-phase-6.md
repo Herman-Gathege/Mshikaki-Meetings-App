@@ -102,7 +102,9 @@ Done and verified on the deployed app:
   kept, icons in navigation, status badges that carry a word and a mark, and
   confirmations after every important action.
 - **6C** Sessions list with one action per state, including Start, and Today
-  rebuilt around the three questions. A completed meeting reports what happened.
+  rebuilt around the three questions. A completed meeting reports what happened,
+  and a meeting that is not going ahead can be cancelled with a reason in the
+  record.
 - **6D** The full question lifecycle: options, local timer, single locked answer,
   reveal with the correct answer, host scoring, results, and Continue the
   meeting. No per-phone realtime. Driven end to end in a browser by

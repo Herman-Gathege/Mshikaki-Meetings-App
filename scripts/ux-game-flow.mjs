@@ -88,6 +88,14 @@ record("2 progress", await evaluate(
   "[...document.querySelectorAll('span')].map(s=>s.innerText).find(t=>/Question \\d+ of \\d+/.test(t))",
 ));
 record("3 timer visible", await evaluate("Boolean(document.querySelector('[role=\"timer\"]'))"));
+const timerBefore = await evaluate(
+  "Number(document.querySelector('[role=\"timer\"]')?.innerText?.match(/\\d+/)?.[0] ?? NaN)",
+);
+await pause(3200);
+const timerAfter = await evaluate(
+  "Number(document.querySelector('[role=\"timer\"]')?.innerText?.match(/\\d+/)?.[0] ?? NaN)",
+);
+record("3b timer counts down", { from: timerBefore, to: timerAfter, counting: timerAfter < timerBefore });
 
 // The answer options are the room's choices; a second tap must not change it.
 await evaluate("document.querySelector('ul[aria-label=\"Answer options\"] button').click()");

@@ -101,7 +101,7 @@ plan's acceptance test asks for. Last run, on the deployed app:
 |---|---|
 | Question shown | "What is the capital city of Kenya?" |
 | Progress | Question 1 of 18 |
-| Timer | visible beside the question |
+| Timer | visible, and counting down: 20 to 17 over three seconds |
 | Pick an answer | the card reports itself selected, and the whole card is the button |
 | Second tap | ignored, one answer stays selected |
 | Reveal | "❌ Not quite!" plus the correct answer |

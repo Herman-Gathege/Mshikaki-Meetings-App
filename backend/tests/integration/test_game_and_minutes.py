@@ -85,6 +85,51 @@ async def test_question_lifecycle_and_scoring(client: AsyncClient, unique_suffix
     assert points_twice == points_once
 
 
+async def test_leaderboard_opt_out_can_be_reversed(client: AsyncClient, unique_suffix: str) -> None:
+    """Hiding yourself is a preference, not a one-way door.
+
+    Somebody who opts out and changes their mind must be able to come back, and
+    must never lose the XP they earned while hidden.
+    """
+    identity = await register(client, f"o{unique_suffix}")
+    session_id = await open_session(client, f"o{unique_suffix}")
+
+    packs = (await client.get("/api/games/packs", params={"family": "host_quiz"})).json()["items"]
+    kenya = next(pack for pack in packs if pack["game_key"] == "trivia-kenya")
+    play = (
+        await client.post(
+            f"/api/sessions/{session_id}/games",
+            json={"game_key": "trivia-kenya", "content_pack_id": kenya["id"]},
+        )
+    ).json()
+    await client.post(
+        f"/api/game-plays/{play['id']}/score",
+        json={"user_id": identity["user"]["id"], "points": 10},
+    )
+    await client.post(f"/api/game-plays/{play['id']}/finish")
+
+    async def standings() -> list[str]:
+        listing = (await client.get("/api/leaderboard", params={"scope": "all"})).json()
+        return [row["name"] for row in listing["items"]]
+
+    assert await standings() == ["Host"]
+
+    # Hide. The table forgets them, but their points are still theirs.
+    hidden = await client.patch("/api/me/preferences", json={"leaderboard_opt_out": True})
+    assert hidden.status_code == 200, hidden.text
+    assert hidden.json()["leaderboard_opt_out"] is True
+    assert await standings() == []
+    assert (await client.get("/api/me/points")).json()["all_time"] > 0
+
+    # Reveal. The decision is theirs to reverse at any time.
+    revealed = await client.patch("/api/me/preferences", json={"leaderboard_opt_out": False})
+    assert revealed.status_code == 200, revealed.text
+    assert revealed.json()["leaderboard_opt_out"] is False
+    assert await standings() == ["Host"]
+    me = (await client.get("/api/auth/me")).json()
+    assert me["user"]["leaderboard_opt_out"] is False
+
+
 async def test_session_can_pause_resume_and_cancel(client: AsyncClient, unique_suffix: str) -> None:
     await register(client, f"p{unique_suffix}")
     session_id = await open_session(client, f"p{unique_suffix}")

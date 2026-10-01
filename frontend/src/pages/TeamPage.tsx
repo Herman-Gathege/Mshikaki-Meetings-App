@@ -6,6 +6,7 @@ import {
   useCreateGuest,
   useCreateInvite,
   useGuests,
+  useMe,
   useMembers,
   useMyPoints,
   useTeam,
@@ -13,6 +14,7 @@ import {
 } from "@/api/hooks";
 import { LoadingState, PageHeader, ErrorState } from "@/components/states";
 import { JoinQr, QrOverlay, joinUrlFor } from "@/components/JoinQr";
+import { toast } from "@/components/toast";
 import { Button, Card, Field, Input, Select } from "@/components/ui/kit";
 
 export function TeamPage() {
@@ -25,10 +27,20 @@ export function TeamPage() {
   const preferences = useUpdatePreferences();
   const points = useMyPoints();
   const achievements = useAchievements();
+  const me = useMe();
   const [guestName, setGuestName] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [code, setCode] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
+  const leaderboardHidden = me.data?.user.leaderboard_opt_out ?? false;
+
+  function toggleLeaderboard() {
+    const next = !leaderboardHidden;
+    preferences
+      .mutateAsync({ leaderboard_opt_out: next })
+      .then(() => toast(next ? "🙈 Hidden from the standings" : "😎 Back on the standings"))
+      .catch(() => toast("Could not update your preference. Try again."));
+  }
 
   if (team.isPending) return <LoadingState />;
   if (team.isError) return <ErrorState error={team.error} />;
@@ -156,13 +168,16 @@ export function TeamPage() {
             <Button
               variant="outline"
               className="mt-2"
-              onClick={() => void preferences.mutateAsync({ leaderboard_opt_out: true })}
+              disabled={preferences.isPending || !me.data}
+              onClick={toggleLeaderboard}
             >
-              Hide me from standings
+              {leaderboardHidden ? "Show me in standings" : "Hide me from standings"}
             </Button>
           </Field>
           <p className="mt-2 text-xs text-ink-600">
-            Opting out is private: you still earn XP, you just do not appear in the table.
+            {leaderboardHidden
+              ? "You are hidden from the table. You still earn XP, and you can show yourself again whenever you like."
+              : "Opting out is private: you still earn XP, you just do not appear in the table."}
           </p>
         </Card>
       </div>

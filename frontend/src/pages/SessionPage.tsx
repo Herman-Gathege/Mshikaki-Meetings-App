@@ -5,6 +5,7 @@ import {
   useAddAgendaItem,
   useCoverAgendaItem,
   useIdeas,
+  useMe,
   useRegenerateSummary,
   useSession,
   useSessionActivity,
@@ -27,6 +28,7 @@ type Tab = (typeof TABS)[number];
 export function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const session = useSession(sessionId);
+  const me = useMe();
   const [tab, setTab] = useState<Tab>("Overview");
 
   if (session.isPending) return <LoadingState />;
@@ -34,6 +36,12 @@ export function SessionPage() {
   if (!session.data) return null;
 
   const data = session.data;
+  // Starting, closing and cancelling belong to the facilitator or an admin. The
+  // controls used to be shown to everybody, and a member who pressed one got
+  // nothing at all: no action and no explanation.
+  const isFacilitator = data.facilitator?.id === me.data?.user.id;
+  const isStaff = me.data?.role === "owner" || me.data?.role === "admin";
+  const canRun = isFacilitator || isStaff;
 
   return (
     <>
@@ -43,17 +51,24 @@ export function SessionPage() {
         actions={
           <>
             <StatusBadge status={data.status} />
-            {data.status === "planned" ? <StartButton sessionId={data.id} /> : null}
+            {data.status === "planned" && canRun ? <StartButton sessionId={data.id} /> : null}
             {data.status === "active" || data.status === "paused" ? (
               <>
-                <ButtonLink to={`/sessions/${data.id}/run`}>Run Mode</ButtonLink>
-                <CloseButton sessionId={data.id} />
+                {canRun ? <ButtonLink to={`/sessions/${data.id}/run`}>Run Mode</ButtonLink> : null}
+                {canRun ? <CloseButton sessionId={data.id} /> : null}
               </>
             ) : null}
-            {data.status === "completed" ? (
+            {data.status === "completed" && canRun ? (
               <ButtonLink to={`/sessions/${data.id}/run`} variant="outline">
                 Review Run Mode
               </ButtonLink>
+            ) : null}
+            {!canRun ? (
+              <span className="self-center text-sm text-ink-600">
+                {data.facilitator
+                  ? `${data.facilitator.name} runs this meeting`
+                  : "Waiting for a facilitator"}
+              </span>
             ) : null}
           </>
         }

@@ -33,10 +33,13 @@ export function StartSessionButton({
       variant={variant}
       disabled={lifecycle.start.isPending}
       onClick={() =>
-        void lifecycle.start.mutateAsync().then(() => {
-          toast("🎲 Let's play!");
-          navigate(`/sessions/${sessionId}/run`);
-        })
+        void lifecycle.start
+          .mutateAsync()
+          .then(() => {
+            toast("🎲 Let's play!");
+            navigate(`/sessions/${sessionId}/run`);
+          })
+          .catch(() => toast("Only the facilitator can start this meeting"))
       }
     >
       {lifecycle.start.isPending ? "Starting…" : label}

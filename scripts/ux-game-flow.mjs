@@ -141,6 +141,7 @@ record("11 results", await evaluate(`
       headline: document.querySelector('h1').innerText,
       winner: /Winner/.test(text) ? text.split('Winner')[1].trim().split('\\n')[0] : null,
       stands: /Final scores/.test(text),
+      showsCorrect: /\\d+ correct/.test(text),
     };
   })()
 `));

@@ -185,6 +185,9 @@ export function AppLayout() {
         <p className="mt-6 px-3 text-xs text-ink-600">
           For fun. Not a performance measure.
         </p>
+        <p className="mt-6 px-3 text-xs text-ink-600">
+          This was made by:https://my-portfolio-7v1e.onrender.com/
+        </p>
       </aside>
 
       <main className="mx-auto max-w-5xl px-4 py-5">

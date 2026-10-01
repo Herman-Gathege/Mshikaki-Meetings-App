@@ -231,9 +231,12 @@ function QuestionScreen({ data }: { data: GamePlay }) {
 
   const question = data.question;
   const choices = question?.choices ?? [];
+  // A prompt deck has no right answer. There is nothing to reveal, and gating the
+  // score behind a reveal makes the host press a button that says nothing.
+  const hasAnswer = Boolean(question?.answer);
   const isLast = data.total > 0 && data.index + 1 >= data.total;
   const outOfTime = secondsLeft <= 0;
-  const locked = revealed || outOfTime || selected !== null;
+  const locked = (hasAnswer && revealed) || outOfTime || selected !== null;
 
   // A new question resets the clock and the answer. Keyed on the index so the
   // four-second poll cannot restart the timer.
@@ -342,7 +345,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
             </p>
           )}
 
-          {!revealed ? (
+          {!revealed && hasAnswer ? (
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button
                 size="xl"
@@ -355,14 +358,17 @@ function QuestionScreen({ data }: { data: GamePlay }) {
               </Button>
               {outOfTime ? <span className="text-white/60">Time is up — reveal when ready.</span> : null}
             </div>
-          ) : (
+          ) : null}
+          {!revealed && !hasAnswer && choices.length === 0 ? (
+            <p className="mt-5 text-lg text-white/70">
+              Read the card aloud, give the room a moment, then score whoever answered well and
+              move on.
+            </p>
+          ) : null}
+          {revealed && hasAnswer ? (
             <div className="mt-5 space-y-3">
               <p className="text-2xl font-semibold">
-                {choices.length === 0
-                  ? "Answer:"
-                  : isCorrect
-                    ? "✅ Correct!"
-                    : "❌ Not quite!"}
+                {choices.length === 0 ? "The answer:" : isCorrect ? "✅ Correct!" : "❌ Not quite!"}
               </p>
               <p className="text-xl">
                 Correct answer: <strong>{question?.answer ?? "—"}</strong>
@@ -371,7 +377,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
                 <p className="text-white/70">{question.explanation}</p>
               ) : null}
             </div>
-          )}
+          ) : null}
         </Card>
 
         <Card className="bg-white/5 text-white">
@@ -399,7 +405,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      disabled={!revealed || actions.score.isPending}
+                      disabled={(hasAnswer && !revealed) || actions.score.isPending}
                       onClick={() =>
                         void actions.score
                           .mutateAsync({

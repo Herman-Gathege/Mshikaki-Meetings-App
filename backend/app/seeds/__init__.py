@@ -151,24 +151,36 @@ def import_pack(db: DbSession, payload: dict) -> tuple[int, int]:
         created = 0
     db.flush()
 
-    for existing in list(pack.questions):
-        db.delete(existing)
-    db.flush()
-
     items = payload.get("items", [])
+    # Update in place rather than delete and re-insert. The seeder runs on every
+    # container start, and a game play holds the question ids it was created with:
+    # replacing the rows would empty any quiz that was in progress during a deploy.
+    by_position = {question.position: question for question in pack.questions}
     for position, item in enumerate(items):
-        db.add(
-            GameQuestion(
-                content_pack_id=pack.id,
-                position=position,
-                prompt=item["prompt"],
-                answer=item.get("answer"),
-                choices=item.get("choices"),
-                category=item.get("category"),
-                difficulty=item.get("difficulty"),
-                explanation=item.get("explanation"),
+        row = by_position.pop(position, None)
+        if row is None:
+            db.add(
+                GameQuestion(
+                    content_pack_id=pack.id,
+                    position=position,
+                    prompt=item["prompt"],
+                    answer=item.get("answer"),
+                    choices=item.get("choices"),
+                    category=item.get("category"),
+                    difficulty=item.get("difficulty"),
+                    explanation=item.get("explanation"),
+                )
             )
-        )
+            continue
+        row.prompt = item["prompt"]
+        row.answer = item.get("answer")
+        row.choices = item.get("choices")
+        row.category = item.get("category")
+        row.difficulty = item.get("difficulty")
+        row.explanation = item.get("explanation")
+    # Only a pack that shrank loses rows.
+    for stale in by_position.values():
+        db.delete(stale)
     db.flush()
     return created, len(items)
 

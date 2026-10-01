@@ -105,7 +105,8 @@ Done and verified on the deployed app:
   rebuilt around the three questions. A completed meeting reports what happened.
 - **6D** The full question lifecycle: options, local timer, single locked answer,
   reveal with the correct answer, host scoring, results, and Continue the
-  meeting. No per-phone realtime.
+  meeting. No per-phone realtime. Driven end to end in a browser by
+  `scripts/ux-game-flow.mjs` and on the server by the integration tests.
 - **6E** Nine-section minutes generated from the frozen summary, downloadable as
   a printable document, with the WhatsApp text export kept.
 - **6H** Append-only enforced by database trigger on `activity` and

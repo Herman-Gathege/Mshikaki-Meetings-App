@@ -92,6 +92,28 @@ The interface never shows a status code. Known failures map to a sentence
 ("Please use your work email address"), and an unexpected one says "Something
 went wrong on our side" with the reference to quote.
 
+## The game flow, driven in a browser (6D)
+
+`scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the
+plan's acceptance test asks for. Last run, on the deployed app:
+
+| Step | Observed |
+|---|---|
+| Question shown | "What is the capital city of Kenya?" |
+| Progress | Question 1 of 18 |
+| Timer | visible beside the question |
+| Pick an answer | the card reports itself selected, and the whole card is the button |
+| Second tap | ignored, one answer stays selected |
+| Reveal | "❌ Not quite!" plus the correct answer |
+| Score | the host awards a point and the score moves |
+| Next question | moves to question 2, and the previous answer is cleared |
+| End the game | results screen: "Game complete!", the winner, and final scores |
+| Continue the meeting | links back to Run Mode for that session |
+
+The same behaviour is covered on the server side in
+`backend/tests/integration/test_game_and_minutes.py`, which also checks that
+finishing twice does not award XP twice.
+
 ## Bad connection (6G)
 
 With Chrome throttled to 400 kbps and 400ms latency:

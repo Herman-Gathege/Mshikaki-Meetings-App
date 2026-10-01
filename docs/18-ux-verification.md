@@ -241,6 +241,40 @@ already running on the Capture stage:
 
 They arrive on the stage the room is on, not the first stage and not a dashboard.
 
+## The game stage, and the portfolio badge
+
+`scripts/ux-game-stage-and-portfolio.mjs`, two contexts against a meeting with a
+quiz already running:
+
+```
+1 facilitator on Play   stage 🎲 Let's play, offered the game chooser
+2 participant on Play   same stage, told to watch the shared screen,
+                        no game chooser, told to follow along
+3 the badge, desktop    href the existing portfolio URL, target "_blank",
+                        rel "noopener noreferrer", visible
+4 the badge, phone      found and visible through the menu
+5 a real click           page targets 2 -> 3, new tab at the portfolio URL,
+                        Mshikaki still on 172.16.1.36:8090
+```
+
+A programmatic click showed no new tab, which is the browser blocking popups
+without a user gesture rather than a fault in the page. Dispatching a real mouse
+event at the badge's coordinates opened the tab, which is how a person clicks.
+
+## Regression after the synchronisation change
+
+Re-running the earlier walks after the Run Mode work found a real regression:
+pressing Start navigated to Run Mode, and the release guard then read a stale
+cached `planned` status and pushed the facilitator straight back to the session
+page. The guard now only acts on data fetched since mount. Re-run afterwards, the
+first-time walk passes end to end again, including Start landing on Run Mode:
+
+```
+6b pressed start   /sessions/<id>/run
+7  run mode        the five journey steps
+15 minutes         download offered, WhatsApp offered
+```
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

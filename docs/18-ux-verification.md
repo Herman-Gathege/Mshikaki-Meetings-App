@@ -208,6 +208,39 @@ No reveal, scoring available immediately, and the screen says what to do instead
 read the card aloud, score whoever answered well, move on. The quiz path is
 unchanged and still gated behind the reveal, as host-paced scoring requires.
 
+## Two browsers, one meeting (Run Mode synchronisation)
+
+`scripts/ux-two-client-sync.mjs` opens two isolated browser contexts in one
+Chrome, each with its own cookie: Herman facilitating, Anne participating. This
+is the multi-user claim actually being tested rather than asserted.
+
+```
+1 the facilitator's screen        stage: 🎲 Let's play, with controls
+2 the participant's session page  offered "Follow the meeting", told who runs it
+3 the participant follows         /sessions/<id>/run, same stage,
+                                  no Next control, no Back control
+4 the facilitator moves to Decide stage: 🧠 What did we decide
+5 the participant after polling   stage: 🧠 What did we decide
+6 the participant follows again    stage: 🎯 Who's got this
+7 after that's a wrap             both at /sessions/<id>, participant released,
+                                  navigation available again
+```
+
+## A latecomer scanning the code
+
+`scripts/ux-late-joiner.mjs` uses a third, empty browser context against a meeting
+already running on the Capture stage:
+
+```
+1 scanned the code   "Joining Late Join", told which meeting
+2 where they landed  /sessions/<id>/run, stage "💡 What are we thinking"
+                     told to follow along, can capture an idea,
+                     no facilitator controls
+3 took part          saved an idea, landed on it
+```
+
+They arrive on the stage the room is on, not the first stage and not a dashboard.
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

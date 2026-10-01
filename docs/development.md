@@ -63,6 +63,24 @@ and a play id; see [18-ux-verification.md](18-ux-verification.md).
   restricted shell, binding sockets and the thread pool may be blocked, which
   makes FastAPI's test client and any dev server hang. If that happens, run the
   command outside the sandbox rather than debugging the app.
+- **A row-level trigger only fires per row.** A test that deletes from an empty
+  table proves nothing, because the statement succeeds. The append-only test now
+  inserts a row first and also checks the triggers exist, so it holds on a fresh
+  database as well as a well-used one.
+
+## Verifying the CI sequence locally
+
+CI runs migrations, then the seeder, then the suite, against an empty database.
+That order was wrong once and only showed up on a truly empty one, so it is worth
+repeating here after schema or seeding changes:
+
+```bash
+docker compose -f docker-compose.dev.yml exec -T db psql -U mshikaki -d postgres \
+  -c "DROP DATABASE IF EXISTS mshikaki_ci" -c "CREATE DATABASE mshikaki_ci"
+cd backend
+export DATABASE_URL="postgresql+psycopg://mshikaki:change-me@localhost:5432/mshikaki_ci"
+uv run alembic upgrade head && uv run python -m app.cli seed && uv run pytest
+```
 
 ## Frontend notes
 

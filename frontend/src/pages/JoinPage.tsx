@@ -6,10 +6,10 @@
  */
 
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { apiFetch } from "@/api/client";
+import { ApiError, apiFetch } from "@/api/client";
 import type { SessionDetail } from "@/api/types";
 import { Button, Card, Field, Input } from "@/components/ui/kit";
 import { ErrorState, LoadingState } from "@/components/states";
@@ -122,9 +122,20 @@ export function JoinPage() {
         </Button>
 
         {join.isError ? (
-          <p className="text-sm text-red-700">
-            {join.error instanceof Error ? join.error.message : "Could not join."}
-          </p>
+          join.error instanceof ApiError && join.error.code === "conflict" ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+              <p className="font-medium text-ink-900">
+                That email already has a Mshikaki account.
+              </p>
+              <Link className="mt-1 inline-block text-ember-700 underline" to="/login">
+                Sign in instead →
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-red-700">
+              {join.error instanceof Error ? join.error.message : "Could not join."}
+            </p>
+          )
         ) : null}
       </Card>
 

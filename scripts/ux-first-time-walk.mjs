@@ -77,9 +77,12 @@ async function screen() {
 }
 
 async function click(phrase) {
+  // Phone-width labels wrap, so "Who's got this" arrives as "Who's got\nthis".
+  // Compare on collapsed whitespace the way a person reads it.
   return evaluate(`(() => {
+    const wanted = ${JSON.stringify(phrase)}.replace(/\\s+/g, ' ').toLowerCase();
     const node = [...document.querySelectorAll('button, a')]
-      .find(n => n.innerText.includes(${JSON.stringify(phrase)}));
+      .find(n => n.innerText.replace(/\\s+/g, ' ').toLowerCase().includes(wanted));
     if (!node) return false;
     node.click();
     return true;
@@ -120,7 +123,9 @@ note("1 scanned the code", await screen());
 
 // 2. They give a name, a work email and a password, and join.
 await fill("input[type=text], input:not([type])", "Anne");
-await fill("input[type=email]", "anne.firsttime@kbc.co.ke");
+// A newcomer each run: the same address twice would be an existing account.
+const newcomer = `anne.${Date.now()}@kbc.co.ke`;
+await fill("input[type=email]", newcomer);
 await fill("input[type=password]", "a-good-password");
 await pause(300);
 note("2 filled the form", {
@@ -204,12 +209,18 @@ note("11 assign step", {
 } );
 await fill("input[type=text], input:not([type])", "Draft the reminder spec");
 await pause(300);
+note("11b owner picker", {
+  present: await evaluate("document.querySelectorAll('select').length"),
+});
 await evaluate(`(() => {
   const select = document.querySelector('select');
+  if (!select) return false;
   const option = [...select.options].find(o => o.value);
+  if (!option) return false;
   const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
   setter.call(select, option.value);
   select.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
 })()`);
 await pause(300);
 await click("Assign it");

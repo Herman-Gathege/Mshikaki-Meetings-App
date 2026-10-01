@@ -1,19 +1,23 @@
 /**
- * Play: the library, the start sheet, and the game screen.
+ * Play: the library, the start sheet, and the game itself.
 
- * The game screen is the signature Mshikaki experience. It is screen-first for a
- * projector, the host drives it, and it never shows engine or database language.
- * The lifecycle is: question -> options -> timer -> answer -> reveal -> result ->
- * next -> results -> back into the meeting.
+ * One question is live for the whole room at once. The facilitator's screen is
+ * the projector; everybody else answers on their own phone. The clock lives on
+ * the server, so it is the same for the host, for the person who answers in two
+ * seconds and for the person who is still deciding - answering never stops it.
+
+ * The lifecycle is: question -> options and a shared timer -> each player locks
+ * an answer in -> reveal -> points -> next -> results -> back into the meeting.
  */
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
   useContentPacks,
   useGameActions,
   useGames,
+  useMe,
   usePlay,
   useSessionLeaderboard,
   useSessionLifecycle,
@@ -23,10 +27,8 @@ import {
 } from "@/api/hooks";
 import type { GamePlay, Standing } from "@/api/types";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
-import { Button, ButtonLink, Card, Field, Modal, Select } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Input, Modal, Select } from "@/components/ui/kit";
 import { cn } from "@/lib/utils";
-
-const QUESTION_SECONDS = 20;
 
 export function PlayPage() {
   const games = useGames();
@@ -139,7 +141,10 @@ function StartGameModal({ open, onClose }: { open: boolean; onClose: () => void 
           </Select>
         </Field>
 
-        <Field label="Questions from">
+        <Field
+          label="Questions from"
+          hint="Everybody answers on their own phone. The host screen shows the question and the clock."
+        >
           <Select value={packId} onChange={(event) => setPackId(event.target.value)}>
             {packRequired ? (
               <option value="">Pick a pack</option>
@@ -181,12 +186,15 @@ function choiceMatches(choice: string, answer: string | null): boolean {
   if (!answer) return false;
   const clean = answer.trim().toLowerCase();
   const picked = choice.trim().toLowerCase();
-  return clean === picked || clean.startsWith(picked) || picked.startsWith(clean.split(" - ")[0] ?? clean);
+  return (
+    clean === picked || clean.startsWith(picked) || picked.startsWith(clean.split(" - ")[0] ?? clean)
+  );
 }
 
 export function GamePlayPage() {
   const { playId } = useParams<{ playId: string }>();
   const play = usePlay(playId);
+  const me = useMe();
   const actions = useGameActions(playId ?? "");
 
   if (play.isPending) return <LoadingState label="Getting the game ready…" />;
@@ -194,7 +202,25 @@ export function GamePlayPage() {
   if (!play.data) return null;
   const data = play.data;
 
+  const role = me.data?.role;
+  const canDrive = Boolean(
+    data.host_id === me.data?.user.id || role === "owner" || role === "admin",
+  );
+
   if (data.total === 0 && data.game.family !== "host_scored") {
+    if (!canDrive) {
+      return (
+        <PlayerShell data={data}>
+          <Card className="bg-white/5 text-center text-white">
+            <p className="text-5xl">🎲</p>
+            <h1 className="mt-3 text-3xl font-semibold">Waiting for the questions</h1>
+            <p className="mt-2 text-white/70">
+              This game came without questions. The facilitator will sort that out.
+            </p>
+          </Card>
+        </PlayerShell>
+      );
+    }
     return (
       <main className="mx-auto max-w-2xl p-6">
         <PageHeader title={data.game.name} subtitle="This game has no questions loaded" />
@@ -218,42 +244,246 @@ export function GamePlayPage() {
 
   if (data.status === "finished") return <ResultsScreen data={data} />;
 
-  return <QuestionScreen data={data} />;
+  return canDrive ? <HostScreen data={data} /> : <PlayerScreen data={data} />;
 }
 
-function QuestionScreen({ data }: { data: GamePlay }) {
+/**
+ * The room's clock, drawn from the server's answer.
+
+ * Every poll re-syncs to `seconds_left`, and the local tick only fills the gap
+ * between two polls. Nothing a player does stops it: their own answer, or
+ * anybody else's, must never freeze the room.
+ */
+function useLiveClock(data: GamePlay): number {
+  const server = data.question?.seconds_left ?? 0;
+  const revealed = Boolean(data.question?.revealed);
+  const [left, setLeft] = useState(server);
+
+  useEffect(() => setLeft(server), [server]);
+
+  useEffect(() => {
+    if (revealed) return;
+    const tick = setInterval(() => setLeft((value) => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(tick);
+  }, [revealed, data.id, data.index]);
+
+  return left;
+}
+
+/** The options wear different colours so a glance is enough to find yours. */
+const OPTION_TONES = [
+  "border-ember-500/60 bg-ember-500/10",
+  "border-nile-500/60 bg-nile-500/10",
+  "border-emerald-400/60 bg-emerald-400/10",
+  "border-violet-400/60 bg-violet-400/10",
+];
+
+function Timer({ left, className }: { left: number; className?: string }) {
+  const out = left <= 0;
+  return (
+    <div
+      role="timer"
+      aria-live="off"
+      className={cn(
+        "shrink-0 rounded-2xl px-5 py-3 text-center",
+        out ? "bg-red-500/20 text-red-200" : "bg-ember-500 text-ink-900",
+        className,
+      )}
+    >
+      <span className="block text-3xl font-bold tabular-nums">{out ? "⏰" : left}</span>
+      <span className="text-xs">{out ? "Time!" : "seconds"}</span>
+    </div>
+  );
+}
+
+function ScoreChip({ data }: { data: GamePlay }) {
+  const me = useMe();
+  const mine = data.scores.find((row) => row.user_id === me.data?.user.id);
+  return (
+    <span className="rounded-full bg-white/10 px-3 py-1 text-sm">
+      {mine ? `You: ${mine.points} points` : "You: no points yet"}
+    </span>
+  );
+}
+
+// --- the player's phone ---------------------------------------------------------
+
+function PlayerShell({ data, children }: { data: GamePlay; children: ReactNode }) {
+  return (
+    <div className="min-h-dvh bg-ink-900 px-4 py-6 text-white">
+      <main className="mx-auto max-w-2xl space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-widest text-white/50 uppercase">
+              Playing · {data.pack?.title ?? data.game.name}
+            </p>
+            <h1 className="text-xl font-semibold">{data.game.name}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {data.total > 0 ? (
+              <span className="rounded-full bg-white/10 px-3 py-1 text-sm">
+                {data.index + 1} of {data.total}
+              </span>
+            ) : null}
+            <ScoreChip data={data} />
+            <ButtonLink
+              to={`/sessions/${data.session_id}/run`}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+            >
+              Back
+            </ButtonLink>
+          </div>
+        </header>
+        {children}
+      </main>
+    </div>
+  );
+}
+
+function PlayerScreen({ data }: { data: GamePlay }) {
+  const actions = useGameActions(data.id);
+  const question = data.question;
+  const left = useLiveClock(data);
+  const mine = data.you.answer;
+  const revealed = Boolean(question?.revealed);
+  const ranOut = left <= 0;
+
+  if (!question) {
+    return (
+      <PlayerShell data={data}>
+        <Card className="bg-white/5 text-center text-white">
+          <p className="text-5xl">🍢</p>
+          <h1 className="mt-3 text-3xl font-semibold">You're in. Hang on…</h1>
+          <p className="mt-2 text-white/70">
+            The facilitator is getting the game ready. The first question appears here by
+            itself.
+          </p>
+        </Card>
+      </PlayerShell>
+    );
+  }
+
+  const choices = question.choices ?? [];
+  const canAnswer = Boolean(mine) === false && !revealed && !ranOut && choices.length > 0;
+  const isCorrect = mine !== null && choiceMatches(mine, question.answer);
+  const isLast = data.total > 0 && data.index + 1 >= data.total;
+
+  return (
+    <PlayerShell data={data}>
+      <Card className="bg-white/5 text-white">
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-2xl leading-snug font-semibold">{question.prompt}</h2>
+          {choices.length > 0 && !revealed ? <Timer left={left} /> : null}
+        </div>
+
+        {choices.length > 0 ? (
+          <ul className="mt-5 grid gap-3" aria-label="Answer options">
+            {choices.map((choice, index) => {
+              const picked = mine === choice;
+              const correctOne = revealed && choiceMatches(choice, question.answer);
+              return (
+                <li key={choice}>
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    disabled={!canAnswer || actions.answer.isPending}
+                    onClick={() => void actions.answer.mutateAsync({ choice })}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left text-lg transition-colors",
+                      correctOne
+                        ? "border-emerald-400 bg-emerald-400/25"
+                        : picked
+                          ? revealed && !isCorrect
+                            ? "border-red-400 bg-red-400/25"
+                            : "border-emerald-400 bg-emerald-400/20"
+                          : OPTION_TONES[index % OPTION_TONES.length],
+                      !canAnswer && !picked && !correctOne ? "opacity-60" : "",
+                      canAnswer ? "hover:brightness-125" : "",
+                    )}
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 font-semibold">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span>{choice}</span>
+                    {picked ? <span className="ml-auto text-sm">Your answer</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-5 text-lg text-white/70">
+            Answer out loud — the facilitator scores this one.
+          </p>
+        )}
+
+        {mine && !revealed ? (
+          <p className="mt-5 rounded-xl bg-emerald-400/15 p-3 text-lg text-emerald-200">
+            ✅ Locked in: <strong>{mine}</strong>. The clock keeps running for everybody else —
+            watch the big screen.
+          </p>
+        ) : null}
+        {!mine && ranOut && !revealed ? (
+          <p className="mt-5 rounded-xl bg-red-500/15 p-3 text-lg text-red-200">
+            ⏰ Time! Nothing was locked in this round.
+          </p>
+        ) : null}
+        {revealed ? (
+          <div className="mt-5 space-y-2">
+            <p className="text-2xl font-semibold">
+              {!mine ? "No answer this round" : isCorrect ? "✅ Correct!" : "❌ Not quite!"}
+            </p>
+            <p className="text-xl">
+              The answer: <strong>{question.answer ?? "—"}</strong>
+            </p>
+            {question.explanation ? <p className="text-white/70">{question.explanation}</p> : null}
+            {!isLast ? (
+              <p className="text-white/60">Waiting for the next question…</p>
+            ) : (
+              <p className="text-white/60">Waiting for the results…</p>
+            )}
+          </div>
+        ) : null}
+      </Card>
+    </PlayerShell>
+  );
+}
+
+// --- the facilitator's screen ---------------------------------------------------
+
+function HostScreen({ data }: { data: GamePlay }) {
   const actions = useGameActions(data.id);
   const players = useSessionPlayers(data.session_id);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(QUESTION_SECONDS);
   const [lastAward, setLastAward] = useState<string | null>(null);
-
   const question = data.question;
   const choices = question?.choices ?? [];
-  // A prompt deck has no right answer. There is nothing to reveal, and gating the
-  // score behind a reveal makes the host press a button that says nothing.
+  const left = useLiveClock(data);
+  const revealed = Boolean(question?.revealed);
+  const ranOut = left <= 0;
   const hasAnswer = Boolean(question?.answer);
   const isLast = data.total > 0 && data.index + 1 >= data.total;
-  const outOfTime = secondsLeft <= 0;
-  const locked = (hasAnswer && revealed) || outOfTime || selected !== null;
+  const everyoneIsIn = data.answered.of > 0 && data.answered.count >= data.answered.of;
+  const roomIsDone = ranOut || everyoneIsIn;
 
-  // A new question resets the clock and the answer. Keyed on the index so the
-  // four-second poll cannot restart the timer.
-  useEffect(() => {
-    setSelected(null);
-    setRevealed(false);
-    setLastAward(null);
-    setSecondsLeft(QUESTION_SECONDS);
-  }, [data.index, data.id]);
+  useEffect(() => setLastAward(null), [data.index, data.id]);
 
-  useEffect(() => {
-    if (revealed || selected !== null || outOfTime) return;
-    const tick = setTimeout(() => setSecondsLeft((value) => value - 1), 1000);
-    return () => clearTimeout(tick);
-  }, [secondsLeft, revealed, selected, outOfTime]);
-
-  const isCorrect = selected !== null && choiceMatches(selected, question?.answer ?? null);
+  if (!question) {
+    return (
+      <div className="min-h-dvh bg-ink-900 px-4 py-6 text-white">
+        <main className="mx-auto max-w-3xl">
+          <Card className="bg-white/5 text-center text-white">
+            <h1 className="text-3xl font-semibold">{data.game.name}</h1>
+            <p className="mt-2 text-white/70">That was the last question.</p>
+            <Button size="xl" className="mt-5" onClick={() => void actions.finish.mutateAsync()}>
+              See the results →
+            </Button>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-ink-900 px-4 py-6 text-white">
@@ -262,7 +492,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
           <div>
             <p className="text-xs tracking-widest text-white/50 uppercase">
               {data.pack?.title ?? data.game.name}
-              {question?.category ? ` · ${question.category}` : ""}
+              {question.category ? ` · ${question.category}` : ""}
             </p>
             <h1 className="text-2xl font-semibold sm:text-3xl">{data.game.name}</h1>
           </div>
@@ -282,84 +512,59 @@ function QuestionScreen({ data }: { data: GamePlay }) {
 
         <Card className="bg-white/5 text-white">
           <div className="flex items-start justify-between gap-4">
-            <h2 className="text-2xl leading-snug font-semibold sm:text-4xl">
-              {question?.prompt ?? "Run the activity, then score it below."}
-            </h2>
-            {choices.length > 0 && !revealed ? (
-              <div
-                role="timer"
-                aria-live="off"
-                className={cn(
-                  "shrink-0 rounded-2xl px-5 py-3 text-center",
-                  outOfTime ? "bg-red-500/20 text-red-200" : "bg-ember-500 text-ink-900",
-                )}
-              >
-                <span className="block text-3xl font-bold tabular-nums">
-                  {outOfTime ? "⏰" : secondsLeft}
-                </span>
-                <span className="text-xs">{outOfTime ? "Time!" : "seconds"}</span>
-              </div>
-            ) : null}
+            <h2 className="text-2xl leading-snug font-semibold sm:text-4xl">{question.prompt}</h2>
+            {choices.length > 0 && !revealed ? <Timer left={left} /> : null}
           </div>
+
+          <p className="mt-3 text-lg text-white/70">
+            {choices.length > 0
+              ? revealed
+                ? `The room answered on their phones — ${data.answered.count} of ${data.answered.of} locked in an answer.`
+                : `${data.answered.count} of ${data.answered.of} have answered. The clock is still running for the rest.`
+              : (data.game.how_to_play ?? "The room answers out loud. Score it below.")}
+          </p>
 
           {choices.length > 0 ? (
             <ul className="mt-5 grid gap-3 sm:grid-cols-2" aria-label="Answer options">
               {choices.map((choice, index) => {
-                const picked = selected === choice;
-                const correctOne = revealed && choiceMatches(choice, question?.answer ?? null);
+                const correctOne = revealed && choiceMatches(choice, question.answer);
                 return (
                   <li key={choice}>
-                    <button
-                      type="button"
-                      aria-pressed={picked}
-                      disabled={locked && !picked}
-                      onClick={() => {
-                        if (locked) return;
-                        setSelected(choice);
-                      }}
+                    <div
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left text-lg transition-colors",
+                        "flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left text-lg",
                         correctOne
                           ? "border-emerald-400 bg-emerald-400/20"
-                          : picked
-                            ? isCorrect
-                              ? "border-emerald-400 bg-emerald-400/20"
-                              : "border-red-400 bg-red-400/20"
-                            : "border-white/15 bg-white/5 hover:bg-white/15",
-                        locked && !picked && !correctOne ? "opacity-60" : "",
+                          : OPTION_TONES[index % OPTION_TONES.length],
+                        revealed && !correctOne ? "opacity-60" : "",
                       )}
                     >
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 font-semibold">
                         {String.fromCharCode(65 + index)}
                       </span>
                       <span>{choice}</span>
-                      {picked ? <span className="ml-auto text-sm">Your answer</span> : null}
-                    </button>
+                    </div>
                   </li>
                 );
               })}
             </ul>
-          ) : (
-            <p className="mt-5 text-white/70">
-              {data.game.how_to_play ?? "The room answers out loud. Reveal, then score it below."}
-            </p>
-          )}
+          ) : null}
 
-          {!revealed && hasAnswer ? (
+          {hasAnswer && !revealed ? (
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button
-                size="xl"
-                onClick={() => setRevealed(true)}
-                disabled={choices.length > 0 && selected === null && !outOfTime}
-              >
-                {choices.length > 0 && selected === null && !outOfTime
-                  ? "Pick an answer first"
-                  : "Reveal the answer"}
+              <Button size="xl" onClick={() => void actions.reveal.mutateAsync()}>
+                {roomIsDone ? "Reveal the answer" : "Skip to the answer"}
               </Button>
-              {outOfTime ? <span className="text-white/60">Time is up — reveal when ready.</span> : null}
+              <span className="text-white/60">
+                {ranOut
+                  ? "Time is up."
+                  : everyoneIsIn
+                    ? "Everybody is in."
+                    : `${data.answered.of - data.answered.count} still thinking — ${left}s left.`}
+              </span>
             </div>
           ) : null}
-          {!revealed && !hasAnswer && choices.length === 0 ? (
+          {!hasAnswer && choices.length === 0 ? (
             <p className="mt-5 text-lg text-white/70">
               Read the card aloud, give the room a moment, then score whoever answered well and
               move on.
@@ -367,13 +572,11 @@ function QuestionScreen({ data }: { data: GamePlay }) {
           ) : null}
           {revealed && hasAnswer ? (
             <div className="mt-5 space-y-3">
-              <p className="text-2xl font-semibold">
-                {choices.length === 0 ? "The answer:" : isCorrect ? "✅ Correct!" : "❌ Not quite!"}
-              </p>
+              <p className="text-2xl font-semibold">The answer</p>
               <p className="text-xl">
-                Correct answer: <strong>{question?.answer ?? "—"}</strong>
+                <strong>{question.answer}</strong>
               </p>
-              {question?.explanation ? (
+              {question.explanation ? (
                 <p className="text-white/70">{question.explanation}</p>
               ) : null}
             </div>
@@ -383,7 +586,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
         <Card className="bg-white/5 text-white">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-white/70">
-              {revealed ? "Who got it? Tap to score" : "Scores"}
+              {revealed && hasAnswer ? "Scored automatically" : "Scores"}
             </h2>
             {lastAward ? <span className="text-sm text-emerald-300">{lastAward}</span> : null}
           </div>
@@ -402,29 +605,32 @@ function QuestionScreen({ data }: { data: GamePlay }) {
                     {player.name}
                     <span className="ml-2 text-white/50">{score?.points ?? 0}</span>
                   </span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={(hasAnswer && !revealed) || actions.score.isPending}
-                      onClick={() =>
-                        void actions.score
-                          .mutateAsync({
-                            user_id: player.user_id ?? undefined,
-                            guest_id: player.guest_id ?? undefined,
-                            points: 10,
-                          })
-                          .then(() => setLastAward(`+10 for ${player.name}`))
-                      }
-                    >
-                      +10
-                    </Button>
-                    <FixScoreButton
-                      playId={data.id}
-                      user_id={player.user_id ?? undefined}
-                      guest_id={player.guest_id ?? undefined}
-                      name={player.name}
-                    />
-                  </div>
+                  {/* A quiz question scores itself. Prompt decks keep the host's taps. */}
+                  {hasAnswer ? null : (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={actions.score.isPending}
+                        onClick={() =>
+                          void actions.score
+                            .mutateAsync({
+                              user_id: player.user_id ?? undefined,
+                              guest_id: player.guest_id ?? undefined,
+                              points: 10,
+                            })
+                            .then(() => setLastAward(`+10 for ${player.name}`))
+                        }
+                      >
+                        +10
+                      </Button>
+                      <FixScoreButton
+                        playId={data.id}
+                        user_id={player.user_id ?? undefined}
+                        guest_id={player.guest_id ?? undefined}
+                        name={player.name}
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -438,7 +644,7 @@ function QuestionScreen({ data }: { data: GamePlay }) {
             >
               ← Back
             </Button>
-            {isLast ? (
+            {hasAnswer && !revealed ? null : isLast ? (
               <Button size="xl" onClick={() => void actions.finish.mutateAsync()}>
                 See results →
               </Button>
@@ -491,19 +697,14 @@ function FixScoreButton({
       <Modal open={open} title={`Correct ${name}'s score`} onClose={() => setOpen(false)}>
         <div className="space-y-3">
           <Field label="Score">
-            <input
-              className="h-11 w-full rounded-lg border border-ink-200 px-3"
+            <Input
               inputMode="numeric"
               value={points}
               onChange={(event) => setPoints(event.target.value)}
             />
           </Field>
           <Field label="Why?" hint="Recorded in the trail so nobody has to remember.">
-            <input
-              className="h-11 w-full rounded-lg border border-ink-200 px-3"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
+            <Input value={reason} onChange={(event) => setReason(event.target.value)} />
           </Field>
           <Button
             disabled={reason.trim().length < 3 || actions.override.isPending}

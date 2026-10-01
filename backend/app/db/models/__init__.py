@@ -15,6 +15,7 @@ from app.db.models.bragging import (
 )
 from app.db.models.games import (
     ContentPack,
+    GameAnswer,
     GameDefinition,
     GamePlay,
     GameQuestion,
@@ -51,6 +52,7 @@ __all__ = [
     "Comment",
     "ContentPack",
     "Decision",
+    "GameAnswer",
     "GameDefinition",
     "GamePlay",
     "GameQuestion",

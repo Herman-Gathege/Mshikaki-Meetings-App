@@ -162,6 +162,9 @@ RULES: dict[str, Callable[[Actor, Resource], bool]] = {
     "project.manage": lambda a, r: _role_in(a, _RUNS_SESSIONS) or a.owns(r.owner_id),
     # Games
     "game.launch": lambda a, r: _role_in(a, _RUNS_SESSIONS),
+    # Playing is the whole point of a session, so members and guests may answer;
+    # anybody can still be scored by the host without answering.
+    "game.answer": lambda a, r: (_role_in(a, _TEAM_ROLES) or a.is_guest) and r.session_is_open(),
     "game.score": lambda a, r: _manages_session(a, r),
     "game.score.override": lambda a, r: _manages_session(a, r),
     "content.manage": lambda a, r: _role_in(a, _STAFF),

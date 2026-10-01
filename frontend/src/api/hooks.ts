@@ -646,7 +646,9 @@ export function usePlay(playId: string | undefined) {
     queryKey: ["play", playId],
     queryFn: () => apiFetch<GamePlay>(`/game-plays/${playId}`),
     enabled: Boolean(playId),
-    refetchInterval: 4000,
+    // A live question is a shared clock: poll briskly while it runs so a reveal
+    // or a new question lands on every phone together.
+    refetchInterval: (query) => (query.state.data?.status === "running" ? 2000 : 5000),
   });
 }
 
@@ -670,6 +672,16 @@ export function useGameActions(playId: string) {
     next: useMutation({ mutationFn: () => post("next"), onSuccess: () => invalidate(["play"]) }),
     previous: useMutation({
       mutationFn: () => post("previous"),
+      onSuccess: () => invalidate(["play"]),
+    }),
+    // A player's own answer. It locks that player in and changes nothing for
+    // anybody else - the clock belongs to the question.
+    answer: useMutation({
+      mutationFn: (payload: { choice: string }) => post("answer", payload),
+      onSuccess: () => invalidate(["play"]),
+    }),
+    reveal: useMutation({
+      mutationFn: () => post("reveal"),
       onSuccess: () => invalidate(["play"]),
     }),
     score: useMutation({

@@ -235,20 +235,32 @@ export interface ContentPack {
 export interface GamePlay {
   id: string;
   session_id: string;
+  host_id: string | null;
   game: { key: string; name: string; family: GameFamily; how_to_play: string | null };
   pack: { id: string; title: string } | null;
   status: string;
   index: number;
   total: number;
+  /** How many people have answered the live question, out of the room. */
+  answered: { count: number; of: number };
   question: {
     id: string;
     prompt: string;
+    /** Hidden from the room until the answer is revealed. */
     answer: string | null;
     choices: string[] | null;
     category: string | null;
     media_url: string | null;
     explanation: string | null;
+    seconds: number;
+    /** The server's clock, so every phone counts the same seconds. */
+    seconds_left: number;
+    started_at: string | null;
+    revealed: boolean;
+    open: boolean;
   } | null;
+  /** The viewer's own answer to the live question. */
+  you: { answer: string | null; correct: boolean | null; answered: boolean };
   scores: {
     id: string;
     user_id: string | null;

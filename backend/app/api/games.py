@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.deps import ContextDep, DbDep, ensure_can, require_capability
 from app.domain.permissions import Resource
-from app.schemas import PlayCreateRequest, ScoreAwardRequest, ScoreOverrideRequest
+from app.schemas import AnswerRequest, PlayCreateRequest, ScoreAwardRequest, ScoreOverrideRequest
 from app.services import games, meetings
 
 router = APIRouter(tags=["games"])
@@ -55,7 +55,7 @@ def start_play(
         pack_id=payload.content_pack_id,
         settings=payload.settings,
     )
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.get("/sessions/{session_id}/players")
@@ -75,7 +75,38 @@ def get_play(
     db: DbSession = DbDep,  # type: ignore[assignment]
 ) -> dict:
     play = games.get_play(db, team_id=context.team.id, play_id=play_id)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
+
+
+@router.post("/game-plays/{play_id}/answer")
+def answer_question(
+    play_id: uuid.UUID,
+    payload: AnswerRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """A player's own answer. Locking in never stops anybody else's clock."""
+    play = games.get_play(db, team_id=context.team.id, play_id=play_id)
+    session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
+    ensure_can(context.actor, "game.answer", play_resource(context, session))
+    games.submit_answer(db, play=play, actor=context.actor, choice=payload.choice)
+    return games.play_state(db, play, actor=context.actor)
+
+
+@router.post("/game-plays/{play_id}/reveal")
+def reveal_answer(
+    play_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Close the question and score whoever got it right."""
+    play = games.get_play(db, team_id=context.team.id, play_id=play_id)
+    session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
+    ensure_can(context.actor, "game.score", play_resource(context, session))
+    games.reveal_question(
+        db, play=play, session=session, actor=context.actor, actor_name=context.name
+    )
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/next")
@@ -88,7 +119,7 @@ def next_question(
     session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
     ensure_can(context.actor, "game.score", play_resource(context, session))
     games.next_question(db, play=play, actor=context.actor, actor_name=context.name)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/previous")
@@ -101,7 +132,7 @@ def previous_question(
     session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
     ensure_can(context.actor, "game.score", play_resource(context, session))
     games.previous_question(db, play=play, actor=context.actor, actor_name=context.name)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/shuffle")
@@ -114,7 +145,7 @@ def shuffle_questions(
     session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
     ensure_can(context.actor, "game.score", play_resource(context, session))
     games.shuffle_questions(db, play=play, actor=context.actor, actor_name=context.name)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/score")
@@ -138,7 +169,7 @@ def award_points(
         points=payload.points,
         correct=payload.correct,
     )
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/override")
@@ -163,7 +194,7 @@ def override_score(
         reason=payload.reason,
         override=True,
     )
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/finish")
@@ -176,7 +207,7 @@ def finish_play(
     session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
     ensure_can(context.actor, "game.score", play_resource(context, session))
     games.finish_play(db, play=play, session=session, actor=context.actor, actor_name=context.name)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)
 
 
 @router.post("/game-plays/{play_id}/abandon")
@@ -189,4 +220,4 @@ def abandon_play(
     session = meetings.get_session(db, team_id=context.team.id, session_id=play.session_id)
     ensure_can(context.actor, "game.score", play_resource(context, session))
     games.abandon_play(db, play=play, session=session, actor=context.actor, actor_name=context.name)
-    return games.play_state(db, play)
+    return games.play_state(db, play, actor=context.actor)

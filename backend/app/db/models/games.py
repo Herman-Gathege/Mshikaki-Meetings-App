@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
@@ -125,8 +126,19 @@ class GamePlay(UuidPk, Timestamps, Base):
     current_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The live window for the current question. `question_started_at` is what the
+    # whole room counts down from, and `revealed_at` closes it. Both are on the
+    # play, not in a browser, so every phone agrees on the clock.
+    question_seconds: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
+    question_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revealed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     scores: Mapped[list[GameScore]] = relationship(
+        back_populates="play", cascade="all, delete-orphan"
+    )
+    answers: Mapped[list[GameAnswer]] = relationship(
         back_populates="play", cascade="all, delete-orphan"
     )
 
@@ -161,3 +173,53 @@ class GameScore(UuidPk, Timestamps, Base):
     adjustment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     play: Mapped[GamePlay] = relationship(back_populates="scores")
+
+
+class GameAnswer(UuidPk, Timestamps, Base):
+    """One player's answer to one question. Given once, then locked in.
+
+    Answers are game data, not work data: they are deliberately not written to
+    the activity trail one by one. The reveal writes a single summary line.
+    """
+
+    __tablename__ = "game_answers"
+    __table_args__ = (
+        CheckConstraint("user_id IS NOT NULL OR guest_id IS NOT NULL", name="answer_has_a_player"),
+        Index("ix_game_answers_play", "game_play_id"),
+        Index(
+            "uq_game_answers_play_question_user",
+            "game_play_id",
+            "question_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("user_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_game_answers_play_question_guest",
+            "game_play_id",
+            "question_id",
+            "guest_id",
+            unique=True,
+            postgresql_where=text("guest_id IS NOT NULL"),
+        ),
+    )
+
+    game_play_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("game_plays.id", ondelete="CASCADE"), nullable=False
+    )
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("game_questions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    guest_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("guests.id", ondelete="SET NULL"), nullable=True
+    )
+    player_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    choice: Mapped[str] = mapped_column(Text, nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    points_awarded: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    play: Mapped[GamePlay] = relationship(back_populates="answers")

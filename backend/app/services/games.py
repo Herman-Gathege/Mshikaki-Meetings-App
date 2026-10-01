@@ -1,8 +1,14 @@
 """Game library, play and scoring.
 
-The host is always right: every automatic score can be corrected, and the
-correction is recorded with a reason. Speed is deliberately not rewarded by
-default, because a shared laptop is not a fair race.
+A quiz question is live for the whole room at once. Every phone shows the same
+countdown because the clock lives on the play (`question_started_at`), not in a
+browser, and a player who answers is locked in without stopping anybody else's
+timer. When the host reveals the answer the right answers are scored in one go:
+ten points, plus five for answering in the first half of the clock.
+
+The host is always right: every automatic score can be corrected afterwards, and
+the correction is recorded with a reason. Games without a right answer (prompt
+decks) keep the manual "+10" the host presses while the room talks.
 """
 
 from __future__ import annotations
@@ -11,22 +17,39 @@ import random
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DbSession
 
 from app.db.models import (
     ContentPack,
+    GameAnswer,
     GameDefinition,
     GamePlay,
     GameQuestion,
     GameScore,
     Guest,
+    SessionParticipant,
     User,
 )
 from app.db.models import Session as MeetingSession
+from app.domain import quiz as quiz_rules
 from app.domain.enums import GameFamily, GamePlayStatus, ParticipantRole
 from app.errors import AppError, NotFoundError
 from app.services.activity import record_activity
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _question_seconds(settings: dict | None) -> int:
+    """How long a question stays open. Configurable, with a sane default."""
+    raw = (settings or {}).get("question_seconds", quiz_rules.DEFAULT_QUESTION_SECONDS)
+    try:
+        seconds = int(raw)
+    except (TypeError, ValueError):
+        return quiz_rules.DEFAULT_QUESTION_SECONDS
+    return min(max(seconds, 5), 300)
 
 
 def list_definitions(db: DbSession) -> list[dict]:
@@ -121,7 +144,11 @@ def create_play(
         settings=settings or {},
         question_order=question_order,
         current_index=0,
-        started_at=datetime.now(timezone.utc),
+        started_at=_now(),
+        question_seconds=_question_seconds(settings),
+        # The first question is live the moment the game is. Nobody waits for the
+        # host to press a second button.
+        question_started_at=_now() if question_order else None,
     )
     db.add(play)
     db.flush()
@@ -157,16 +184,74 @@ def current_question(db: DbSession, play: GamePlay) -> GameQuestion | None:
     return db.get(GameQuestion, uuid.UUID(order[play.current_index]))
 
 
-def play_state(db: DbSession, play: GamePlay) -> dict:
+def _player_count(db: DbSession, session_id: uuid.UUID) -> int:
+    """How many people in the room could answer: present, not observing."""
+    return int(
+        db.execute(
+            select(func.count())
+            .select_from(SessionParticipant)
+            .where(
+                SessionParticipant.session_id == session_id,
+                SessionParticipant.role != ParticipantRole.OBSERVER.value,
+            )
+        ).scalar_one()
+    )
+
+
+def _may_see_the_answer(db: DbSession, play: GamePlay, actor) -> bool:
+    """The host and the staff see the answer before the reveal; the room does not."""
+    if actor is None:
+        return False
+    if getattr(actor, "is_staff", False):
+        return True
+    if actor.user_id is None:
+        return False
+    if play.host_id is not None and actor.user_id == play.host_id:
+        return True
+    session = db.get(MeetingSession, play.session_id)
+    return bool(session is not None and session.facilitator_id == actor.user_id)
+
+
+def play_state(db: DbSession, play: GamePlay, *, actor=None) -> dict:
     definition = db.execute(
         select(GameDefinition).where(GameDefinition.key == play.game_definition_key)
     ).scalar_one_or_none()
     pack = db.get(ContentPack, play.content_pack_id) if play.content_pack_id else None
     question = current_question(db, play)
     total = len(play.question_order or [])
+    now = _now()
+    revealed = play.revealed_at is not None
+    sees_the_answer = revealed or _may_see_the_answer(db, play, actor)
+    limit = play.question_seconds or quiz_rules.DEFAULT_QUESTION_SECONDS
+
+    answers = (
+        list(
+            db.execute(
+                select(GameAnswer).where(
+                    GameAnswer.game_play_id == play.id,
+                    GameAnswer.question_id == question.id,
+                )
+            ).scalars()
+        )
+        if question is not None
+        else []
+    )
+    mine = None
+    if actor is not None:
+        mine = next(
+            (
+                row
+                for row in answers
+                if (actor.user_id is not None and row.user_id == actor.user_id)
+                or (actor.guest_id is not None and row.guest_id == actor.guest_id)
+            ),
+            None,
+        )
+
     return {
         "id": str(play.id),
         "session_id": str(play.session_id),
+        "host_id": str(play.host_id) if play.host_id else None,
         "game": {
             "key": play.game_definition_key,
             "name": definition.name if definition else play.game_definition_key,
@@ -177,19 +262,38 @@ def play_state(db: DbSession, play: GamePlay) -> dict:
         "status": play.status,
         "index": play.current_index,
         "total": total,
+        "answered": {"count": len(answers), "of": _player_count(db, play.session_id)},
         "question": (
             {
                 "id": str(question.id),
                 "prompt": question.prompt,
-                "answer": question.answer,
                 "choices": question.choices,
                 "category": question.category,
                 "media_url": question.media_url,
-                "explanation": question.explanation,
+                "answer": question.answer if sees_the_answer else None,
+                "explanation": question.explanation if sees_the_answer else None,
+                "seconds": limit,
+                # The clock is the server's. A phone only draws it.
+                "seconds_left": quiz_rules.seconds_left(play.question_started_at, limit, now),
+                "started_at": play.question_started_at.isoformat()
+                if play.question_started_at
+                else None,
+                "revealed": revealed,
+                "open": quiz_rules.is_accepting_answers(
+                    started_at=play.question_started_at,
+                    limit=limit,
+                    revealed_at=play.revealed_at,
+                    now=now,
+                ),
             }
             if question
             else None
         ),
+        "you": {
+            "answer": mine.choice if mine else None,
+            "correct": mine.correct if mine else None,
+            "answered": mine is not None,
+        },
         "scores": [
             {
                 "id": str(score.id),
@@ -210,6 +314,7 @@ def next_question(db: DbSession, *, play: GamePlay, actor, actor_name: str) -> G
     if total and play.current_index + 1 < total:
         play.current_index += 1
         db.flush()
+        _open_question(play)
     return play
 
 
@@ -217,6 +322,159 @@ def previous_question(db: DbSession, *, play: GamePlay, actor, actor_name: str) 
     if play.current_index > 0:
         play.current_index -= 1
         db.flush()
+        _open_question(play)
+    return play
+
+
+def _open_question(play: GamePlay) -> None:
+    """Put the current question live for the room and close the last one.
+
+    Called whenever the question changes, so every phone starts the same clock
+    again and the previous answer is no longer on screen.
+    """
+    play.question_started_at = _now()
+    play.revealed_at = None
+
+
+def _player_name(db: DbSession, *, user_id: uuid.UUID | None, guest_id: uuid.UUID | None) -> str:
+    if user_id is not None:
+        user = db.get(User, user_id)
+        return user.display_name if user else "Someone"
+    guest = db.get(Guest, guest_id) if guest_id is not None else None
+    return guest.display_name if guest else "A guest"
+
+
+def submit_answer(
+    db: DbSession,
+    *,
+    play: GamePlay,
+    actor,
+    choice: str,
+) -> GameAnswer:
+    """Lock in one player's answer. Answering again is a no-op, not an error."""
+    if play.status != GamePlayStatus.RUNNING.value:
+        raise AppError("This game has already finished.", code="game.not_running")
+
+    if actor.user_id is None and actor.guest_id is None:
+        raise AppError("Sign in to play.", code="game.no_player")
+
+    question = current_question(db, play)
+    if question is None:
+        raise AppError("There is no question to answer yet.", code="game.no_question")
+
+    picked = choice.strip()
+    offered = [str(option) for option in (question.choices or [])]
+    if offered and picked not in offered:
+        raise AppError("That is not one of the options.", code="game.bad_choice")
+    if not picked:
+        raise AppError("Pick an answer first.", code="game.no_choice")
+
+    subject = (
+        GameAnswer.user_id == actor.user_id
+        if actor.user_id is not None
+        else GameAnswer.guest_id == actor.guest_id
+    )
+    existing = db.execute(
+        select(GameAnswer).where(
+            GameAnswer.game_play_id == play.id,
+            GameAnswer.question_id == question.id,
+            subject,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    limit = play.question_seconds or quiz_rules.DEFAULT_QUESTION_SECONDS
+    if not quiz_rules.is_accepting_answers(
+        started_at=play.question_started_at,
+        limit=limit,
+        revealed_at=play.revealed_at,
+        now=_now(),
+    ):
+        raise AppError("Time is up for this question.", code="game.too_late")
+
+    answer = GameAnswer(
+        game_play_id=play.id,
+        question_id=question.id,
+        user_id=actor.user_id,
+        guest_id=actor.guest_id,
+        player_name=_player_name(db, user_id=actor.user_id, guest_id=actor.guest_id),
+        choice=picked,
+        submitted_at=_now(),
+    )
+    db.add(answer)
+    db.flush()
+    return answer
+
+
+def reveal_question(
+    db: DbSession, *, play: GamePlay, session: MeetingSession, actor, actor_name: str
+) -> GamePlay:
+    """Close the window and score the right answers, once."""
+    if play.revealed_at is not None:
+        return play
+
+    question = current_question(db, play)
+    if question is None:
+        raise AppError("There is nothing to reveal.", code="game.no_question")
+
+    play.revealed_at = _now()
+    db.flush()
+
+    scored: list[dict] = []
+    if question.answer:
+        for answer in db.execute(
+            select(GameAnswer).where(
+                GameAnswer.game_play_id == play.id, GameAnswer.question_id == question.id
+            )
+        ).scalars():
+            correct = quiz_rules.answer_is_correct(answer.choice, question.answer)
+            answer.correct = correct
+            # Every player who answered gets a row, right or wrong: the row is
+            # what "played a game" is paid from at the end, and somebody who
+            # answered badly still showed up.
+            row = _score_row(
+                db,
+                play=play,
+                user_id=answer.user_id,
+                guest_id=answer.guest_id,
+                player_name=answer.player_name,
+            )
+            if not correct:
+                continue
+            elapsed = (
+                (answer.submitted_at - play.question_started_at).total_seconds()
+                if play.question_started_at
+                else 0.0
+            )
+            points = quiz_rules.points_for(
+                correct=True,
+                elapsed_seconds=elapsed,
+                limit=play.question_seconds or quiz_rules.DEFAULT_QUESTION_SECONDS,
+            )
+            row.points += points
+            row.correct_count += 1
+            row.source = "auto"
+            answer.points_awarded = points
+            scored.append({"name": answer.player_name, "points": points})
+        db.flush()
+
+    record_activity(
+        db,
+        team_id=session.team_id,
+        session_id=session.id,
+        actor=actor,
+        actor_name=actor_name,
+        verb="game.answer_revealed",
+        target_type="game_play",
+        target_id=play.id,
+        payload={
+            "game": play.game_definition_key,
+            "question": question.prompt[:120],
+            "answer": question.answer,
+            "scored": scored,
+        },
+    )
     return play
 
 

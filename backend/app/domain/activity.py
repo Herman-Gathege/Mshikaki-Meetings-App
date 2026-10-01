@@ -69,6 +69,11 @@ VERBS: dict[str, VerbSpec] = {
         xp_rule="game_played",
     ),
     "game.abandoned": V("game.abandoned", 'stopped "{game}" early'),
+    "game.answer_revealed": V(
+        "game.answer_revealed",
+        'revealed the answer to "{question}" in {game}',
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
     "game.point_awarded": V(
         "game.point_awarded",
         "awarded {points} to {player} in {game}",

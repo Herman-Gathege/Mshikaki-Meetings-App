@@ -7,7 +7,6 @@
  */
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { useCreateIdea } from "@/api/hooks";
 import { useSessions } from "@/api/hooks";
@@ -28,11 +27,10 @@ export function CaptureSheet({
   const [sessionId, setSessionId] = useState(defaultSessionId ?? "");
   const createIdea = useCreateIdea();
   const sessions = useSessions();
-  const navigate = useNavigate();
 
   const submit = async () => {
     if (!title.trim()) return;
-    const idea = await createIdea.mutateAsync({
+    await createIdea.mutateAsync({
       title: title.trim(),
       description: description.trim() || undefined,
       session_id: sessionId || undefined,
@@ -41,7 +39,6 @@ export function CaptureSheet({
     setDescription("");
     onClose();
     toast("💡 Idea added!");
-    navigate(`/ideas/${idea.id}`);
   };
 
   return (

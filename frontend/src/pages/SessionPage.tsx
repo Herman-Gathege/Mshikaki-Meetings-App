@@ -371,7 +371,7 @@ function SummaryTab({ sessionId, hasSummary }: { sessionId: string; hasSummary: 
           </p>
           <textarea
             readOnly
-            className="h-48 w-full rounded-lg border border-ink-200 p-3 font-sans text-sm"
+            className="h-48 w-full rounded-lg border border-ink-200 p-3 font-sans text-sm text-ink-900"
             value={fallbackText}
             onFocus={(event) => event.currentTarget.select()}
           />

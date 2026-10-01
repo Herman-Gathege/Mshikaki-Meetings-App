@@ -103,7 +103,9 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
+        // Text colour is stated, never inherited: these fields sit on dark
+        // screens too, where inherited colour would be white on white.
+        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base text-ink-900 outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
         className,
       )}
       {...props}
@@ -115,7 +117,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "w-full rounded-lg border border-ink-200 bg-white p-3 text-base outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
+        "w-full rounded-lg border border-ink-200 bg-white p-3 text-base text-ink-900 outline-none placeholder:text-ink-600 focus-visible:border-ember-500",
         className,
       )}
       {...props}
@@ -127,7 +129,7 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
   return (
     <select
       className={cn(
-        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base outline-none focus-visible:border-ember-500",
+        "h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-base text-ink-900 outline-none focus-visible:border-ember-500",
         className,
       )}
       {...props}

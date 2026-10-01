@@ -267,18 +267,37 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
   const startPlay = useStartPlay(session.id);
   const navigate = useNavigate();
   const [gameKey, setGameKey] = useState("");
+  // Remembered across screens: somebody who deliberately steps back out of a
+  // game is not dragged in again, but a new game still pulls them in.
+  const joinedKey = `mshikaki.joined.${session.id}`;
+  const joined = useRef<string | null>(window.sessionStorage.getItem(joinedKey));
 
   const running = session.games.find((game) => game.status === "running");
   const quickGames = (games.data?.items ?? []).filter((game) => game.typical_minutes <= 15);
+
+  // A game that is running is a game everybody plays. Pull each person onto the
+  // question screen once per game, so nobody is left looking at a notice while
+  // the room is answering.
+  useEffect(() => {
+    if (canDrive || !running || joined.current === running.id) return;
+    joined.current = running.id;
+    window.sessionStorage.setItem(joinedKey, running.id);
+    navigate(`/play/${running.id}`);
+  }, [canDrive, running, navigate, joinedKey]);
 
   if (!canDrive) {
     return (
       <Card className="bg-white/5 text-white">
         <h2 className="text-3xl font-semibold">🎲 The game</h2>
         {running ? (
-          <p className="mt-3 text-xl text-white/80">
-            The facilitator is running a game. Watch the shared screen.
-          </p>
+          <>
+            <p className="mt-3 text-xl text-white/80">
+              You're being taken to the question. Answer on your own phone.
+            </p>
+            <ButtonLink to={`/play/${running.id}`} size="xl" className="mt-4">
+              Play now →
+            </ButtonLink>
+          </>
         ) : (
           <p className="mt-3 text-xl text-white/80">
             The facilitator is choosing a game to warm the room up.

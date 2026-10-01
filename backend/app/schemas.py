@@ -199,6 +199,12 @@ class ScoreAwardRequest(BaseModel):
     correct: bool = True
 
 
+class AnswerRequest(BaseModel):
+    """One player's own answer while the question is live."""
+
+    choice: str = Field(min_length=1, max_length=300)
+
+
 class ScoreOverrideRequest(BaseModel):
     user_id: uuid.UUID | None = None
     guest_id: uuid.UUID | None = None

@@ -161,6 +161,32 @@ same, and a person scanning quickly could tap the tab and wonder why nothing
 happened. And Run Mode's step labels wrap to two lines on a 390px phone, which is
 fine for the facilitator's fallback but is worth knowing before a real session.
 
+## The work layer through the screens
+
+`scripts/ux-work-layer-walk.mjs` covers what had only ever been tested through the
+API: advancing a task, blocking it, seeing it in the blockers list, clearing it,
+making a project, capturing an idea from an ordinary page, and finding it by
+search.
+
+| Step | Observed |
+|---|---|
+| The work page | Tabs for My work, All tasks and Board; each task shows its owner, due date and that it came from a session |
+| Advancing a task | Toast "▶ In progress", and the badge follows |
+| Blocking a task | Status becomes blocked and the reason is shown on the task |
+| The blockers list | The blocked task appears there with a Resolve control |
+| Clearing it | The blocker goes, and the page returns to "🟢 Smooth sailing" |
+| A new project | Created and listed |
+| Capturing from anywhere | The + Idea sheet opens over the work page |
+| Saving it | Lands on the idea, as intended |
+| Searching for it | Found |
+
+No leaked debug text on any screen in this walk either.
+
+One thing the walk taught the harness rather than the product: the header search
+field is in the DOM at phone width while being invisible, so a script that types
+into "the first input" writes into nothing. A person cannot make that mistake
+because they type where they can see. Worth knowing for anyone writing a test here.
+
 ## The game flow, driven in a browser (6D)
 
 `scripts/ux-game-flow.mjs` plays a round the way a room does and asserts what the

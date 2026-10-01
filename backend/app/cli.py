@@ -116,9 +116,9 @@ def preflight() -> int:
     except Exception as exc:  # noqa: BLE001 - this is a check, not a request path
         problems.append(f"Database check failed: {type(exc).__name__}: {exc}")
 
-    backup_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backups"
-    )
+    # Backups live next to the compose file, mounted read-only at /app/backups in
+    # the container, and ./backups from the repository root on a developer machine.
+    backup_dir = os.environ.get("BACKUP_DIR") or os.path.join(os.getcwd(), "backups")
     newest: float | None = None
     if os.path.isdir(backup_dir):
         stamps = [

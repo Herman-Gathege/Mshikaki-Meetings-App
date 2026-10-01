@@ -45,6 +45,10 @@ services:
       POSTGRES_PORT: "5432"
     ports:
       - "${APP_PORT:-8080}:8000"
+    volumes:
+      # Read-only: the preflight check can report the age of the newest backup,
+      # and the application cannot touch the dumps.
+      - ./backups:/app/backups:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
       interval: 30s

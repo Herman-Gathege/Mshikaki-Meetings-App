@@ -53,6 +53,43 @@ deliberate.
 | Shell | `docker compose exec app bash` |
 | Database shell | `docker compose exec db sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB'` |
 | Send the digest by hand | `docker compose exec app python -m app.cli send-digest` |
+| Check before a meeting | `docker compose exec app python -m app.cli preflight` |
+
+## Before a real meeting
+
+```bash
+docker compose exec app python -m app.cli preflight
+```
+
+It checks what bites in a room full of people: production secrets, a secure
+cookie over http (which locks everybody out), an https address with an insecure
+cookie, an open join policy, an empty game library, and the age of the newest
+backup. It exits non-zero when something needs fixing, so it can sit in front of
+a session.
+
+The app sees `backups/` through a read-only mount, so the check is real rather
+than aspirational and the application cannot touch a dump.
+
+### Restore rehearsal, 1 October 2026
+
+Performed on the live server, not reasoned about:
+
+```bash
+./scripts/backup.sh                    # 56K dump
+# restored into a scratch database, compared, then dropped
+```
+
+| | Live | After restore |
+|---|---|---|
+| Activity rows | 195 | 195 |
+| Sessions | 17 | 17 |
+| Tasks | 7 | 7 |
+| Users | 17 | 17 |
+| Migration | 0003_append_only | 0003_append_only |
+| Append-only triggers | 2 | 2 |
+
+The dump reproduces the data, the schema version and the immutability triggers.
+Repeat it quarterly, and after any change to the backup script.
 
 ## Backups and restore
 

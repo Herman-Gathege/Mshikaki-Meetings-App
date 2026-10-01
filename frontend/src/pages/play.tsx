@@ -23,7 +23,7 @@ import {
 } from "@/api/hooks";
 import type { GamePlay, Standing } from "@/api/types";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
-import { Button, Card, Field, Modal, Select } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Modal, Select } from "@/components/ui/kit";
 import { cn } from "@/lib/utils";
 
 const QUESTION_SECONDS = 20;
@@ -203,9 +203,9 @@ export function GamePlayPage() {
           body="Quiz and prompt games read their questions from a pack. Start it again and choose a pack, and the questions will appear one at a time."
           action={
             <div className="flex flex-wrap justify-center gap-2">
-              <Link to="/play">
-                <Button size="lg">Start again with a pack</Button>
-              </Link>
+              <ButtonLink to="/play" size="lg">
+                Start again with a pack
+              </ButtonLink>
               <Button variant="outline" onClick={() => void actions.finish.mutateAsync()}>
                 Finish without scoring
               </Button>
@@ -267,11 +267,13 @@ function QuestionScreen({ data }: { data: GamePlay }) {
             <span className="rounded-full bg-white/10 px-4 py-2 text-lg font-medium">
               Question {data.index + 1} of {data.total}
             </span>
-            <Link to={`/sessions/${data.session_id}/run`}>
-              <Button variant="ghost" className="text-white hover:bg-white/10">
-                Leave game
-              </Button>
-            </Link>
+            <ButtonLink
+              to={`/sessions/${data.session_id}/run`}
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+            >
+              Leave game
+            </ButtonLink>
           </div>
         </header>
 
@@ -575,11 +577,9 @@ function ResultsScreen({ data }: { data: GamePlay }) {
         <Card className="bg-white/5 text-center text-white">
           <p className="text-xl">🎉 Nice work!</p>
           <p className="mt-1 text-white/70">Ready to turn that energy into something useful?</p>
-          <Link to={`/sessions/${data.session_id}/run`}>
-            <Button size="xl" className="mt-4">
-              Continue the meeting →
-            </Button>
-          </Link>
+          <ButtonLink to={`/sessions/${data.session_id}/run`} size="xl" className="mt-4">
+            Continue the meeting →
+          </ButtonLink>
         </Card>
       </main>
     </div>

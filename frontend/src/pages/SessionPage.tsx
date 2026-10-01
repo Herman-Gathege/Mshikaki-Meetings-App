@@ -17,7 +17,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { toast } from "@/components/toast";
-import { Button, Card, Input } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Input } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
 const TABS = ["Overview", "Agenda", "Ideas", "Tasks", "Summary", "Activity"] as const;
@@ -45,16 +45,14 @@ export function SessionPage() {
             {data.status === "planned" ? <StartButton sessionId={data.id} /> : null}
             {data.status === "active" || data.status === "paused" ? (
               <>
-                <Link to={`/sessions/${data.id}/run`}>
-                  <Button>Run Mode</Button>
-                </Link>
+                <ButtonLink to={`/sessions/${data.id}/run`}>Run Mode</ButtonLink>
                 <CloseButton sessionId={data.id} />
               </>
             ) : null}
             {data.status === "completed" ? (
-              <Link to={`/sessions/${data.id}/run`}>
-                <Button variant="outline">Review Run Mode</Button>
-              </Link>
+              <ButtonLink to={`/sessions/${data.id}/run`} variant="outline">
+                Review Run Mode
+              </ButtonLink>
             ) : null}
           </>
         }
@@ -276,9 +274,21 @@ function SummaryTab({ sessionId, hasSummary }: { sessionId: string; hasSummary: 
         <Button onClick={() => void copy()} disabled={exportText.isPending}>
           {copied ? "Copied" : "Copy for WhatsApp"}
         </Button>
-        <a href={`/api/sessions/${sessionId}/export.txt`} target="_blank" rel="noreferrer">
-          <Button variant="outline">Open plain text</Button>
-        </a>
+        <ButtonLink
+          href={`/api/sessions/${sessionId}/minutes.html`}
+          download
+          variant="secondary"
+        >
+          📄 Download minutes
+        </ButtonLink>
+        <ButtonLink
+          href={`/api/sessions/${sessionId}/export.txt`}
+          target="_blank"
+          rel="noreferrer"
+          variant="outline"
+        >
+          Open plain text
+        </ButtonLink>
         <Button
           variant="outline"
           onClick={() => void regenerate.mutateAsync()}

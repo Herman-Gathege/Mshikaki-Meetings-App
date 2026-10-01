@@ -13,7 +13,7 @@ import type { SessionListItem } from "@/api/types";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { toast } from "@/components/toast";
-import { Button, Card, Field, Input, Modal, Textarea } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Input, Modal, Textarea } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
 export function SessionsPage() {
@@ -156,21 +156,19 @@ function SessionRow({ session }: { session: SessionListItem }) {
             </Button>
           ) : null}
           {session.status === "active" ? (
-            <Link to={`/sessions/${session.id}/run`}>
-              <Button size="lg">Run Mode →</Button>
-            </Link>
+            <ButtonLink to={`/sessions/${session.id}/run`} size="lg">
+              Run Mode →
+            </ButtonLink>
           ) : null}
           {session.status === "paused" ? (
-            <Link to={`/sessions/${session.id}/run`}>
-              <Button size="lg">Resume →</Button>
-            </Link>
+            <ButtonLink to={`/sessions/${session.id}/run`} size="lg">
+              Resume →
+            </ButtonLink>
           ) : null}
           {session.status === "completed" ? (
-            <Link to={`/sessions/${session.id}`}>
-              <Button size="lg" variant="outline">
-                Read what happened →
-              </Button>
-            </Link>
+            <ButtonLink to={`/sessions/${session.id}`} size="lg" variant="outline">
+              Read what happened →
+            </ButtonLink>
           ) : null}
         </div>
       </div>

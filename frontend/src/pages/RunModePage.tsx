@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   useCreateTask,
@@ -25,7 +25,7 @@ import { CaptureSheet } from "@/components/CaptureSheet";
 import { StatusBadge } from "@/components/badges";
 import { LoadingState, ErrorState } from "@/components/states";
 import { toast } from "@/components/toast";
-import { Button, Card, Field, Input, Select } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Input, Select } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
 // The journey is stated in the words a facilitator would use out loud.
@@ -64,11 +64,14 @@ export function RunModePage() {
             <span className="rounded-full bg-white/10 px-3 py-1">
               {data.counts.ideas} ideas · {data.counts.decisions} decisions · {data.counts.tasks} tasks
             </span>
-            <Link to={`/sessions/${data.id}`}>
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                Leave
-              </Button>
-            </Link>
+            <ButtonLink
+              to={`/sessions/${data.id}`}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+            >
+              Leave
+            </ButtonLink>
           </div>
         </div>
       </header>
@@ -437,9 +440,9 @@ function CloseStep({ sessionId }: { sessionId: string }) {
           <p className="text-white/70">
             Closed {formatDateTime(data.ended_at)}. The summary is on the session page.
           </p>
-          <Link to={`/sessions/${sessionId}`}>
-            <Button size="lg">Read the summary</Button>
-          </Link>
+          <ButtonLink to={`/sessions/${sessionId}`} size="lg">
+            Read the summary
+          </ButtonLink>
           <div className="max-w-md space-y-2 border-t border-white/10 pt-4">
             <Field label="Reopen the meeting" hint="Audited, and it marks the summary stale.">
               <Input

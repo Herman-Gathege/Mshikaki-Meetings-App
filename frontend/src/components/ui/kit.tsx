@@ -8,6 +8,7 @@
  */
 
 import { type VariantProps, cva } from "class-variance-authority";
+import { Link } from "react-router-dom";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -51,6 +52,50 @@ export function Button({ className, variant, size, type, ...props }: ButtonProps
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />
+  );
+}
+
+/**
+ * A link that looks like a button.
+
+ * Navigation must stay a link: a <button> inside an <a> is invalid HTML and a
+ * screen reader announces both, which is noise. Use this whenever a button-like
+ * thing is really a destination or a download.
+ */
+export function ButtonLink({
+  to,
+  href,
+  download,
+  target,
+  rel,
+  variant,
+  size,
+  className,
+  children,
+  onClick,
+}: {
+  to?: string;
+  href?: string;
+  download?: boolean | string;
+  target?: string;
+  rel?: string;
+  className?: string;
+  children: ReactNode;
+  onClick?: () => void;
+} & VariantProps<typeof buttonVariants>) {
+  const classes = cn(buttonVariants({ variant, size }), className);
+
+  if (to) {
+    return (
+      <Link to={to} className={classes} onClick={onClick}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} className={classes} download={download} target={target} rel={rel} onClick={onClick}>
+      {children}
+    </a>
   );
 }
 

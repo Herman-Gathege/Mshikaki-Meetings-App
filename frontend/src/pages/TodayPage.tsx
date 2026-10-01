@@ -15,7 +15,7 @@ import { useMarkAttendance, useSessionParticipants, useSessions, useToday } from
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
-import { Button, ButtonLink, Card } from "@/components/ui/kit";
+import { ButtonLink, Card } from "@/components/ui/kit";
 import { formatDateTime, formatRelative, isOverdue } from "@/lib/dates";
 
 export function TodayPage() {

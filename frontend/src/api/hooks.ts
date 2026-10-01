@@ -431,6 +431,8 @@ export type TaskFilters = {
   owner_id?: string;
   project_id?: string;
   session_id?: string;
+  idea_id?: string;
+  decision_id?: string;
   include_closed?: boolean;
 };
 

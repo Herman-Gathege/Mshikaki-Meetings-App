@@ -8,6 +8,7 @@ import {
   useIdea,
   useIdeas,
   useRecordDecision,
+  useTasks,
   useUpdateIdea,
 } from "@/api/hooks";
 import { ActivityFeed } from "@/components/ActivityFeed";
@@ -15,7 +16,7 @@ import { OriginTrail } from "@/components/OriginTrail";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { toast } from "@/components/toast";
-import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Field, Input, Select, Textarea } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
 const STATUSES = ["new", "discussing", "accepted", "parked", "rejected"] as const;
@@ -86,6 +87,7 @@ export function IdeaPage() {
   const [deciding, setDeciding] = useState(false);
   const [statement, setStatement] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
+  const fromThisIdea = useTasks({ idea_id: ideaId });
 
   if (idea.isPending) return <LoadingState />;
   if (idea.isError) return <ErrorState error={idea.error} />;
@@ -220,6 +222,45 @@ export function IdeaPage() {
         </div>
 
         <div className="space-y-4">
+          {data.converted_to ? (
+            <Card className="border-ember-500/30 bg-ember-500/5">
+              <h2 className="text-sm font-semibold text-ink-800">What this idea became</h2>
+              <p className="mt-1 text-sm text-ink-600">
+                The team turned it into a {data.converted_to.type}.
+              </p>
+              <ButtonLink
+                className="mt-3"
+                size="sm"
+                variant="outline"
+                to={`/${
+                  data.converted_to.type === "decision"
+                    ? "decisions"
+                    : `${data.converted_to.type}s`
+                }/${data.converted_to.id}`}
+              >
+                Open the {data.converted_to.type} →
+              </ButtonLink>
+            </Card>
+          ) : null}
+
+          {fromThisIdea.data && fromThisIdea.data.items.length > 0 ? (
+            <Card>
+              <h2 className="mb-3 text-sm font-semibold text-ink-800">
+                Work that came from this idea
+              </h2>
+              <ul className="space-y-2">
+                {fromThisIdea.data.items.map((task) => (
+                  <li key={task.id} className="flex items-center justify-between gap-3 text-sm">
+                    <Link className="hover:underline" to={`/tasks/${task.id}`}>
+                      {task.title}
+                    </Link>
+                    <span className="text-ink-600">{task.owner?.name ?? "unassigned"}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+
           <OriginTrail
             origin={{ session_id: data.session_id, idea_id: data.id }}
             labels={{ session: "Session where this was captured" }}

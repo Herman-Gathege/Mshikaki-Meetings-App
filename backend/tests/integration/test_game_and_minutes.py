@@ -125,6 +125,61 @@ async def test_session_can_pause_resume_and_cancel(client: AsyncClient, unique_s
     assert after["status"] == "planned"
 
 
+async def test_work_can_be_traced_forward_from_an_idea(
+    client: AsyncClient, unique_suffix: str
+) -> None:
+    """The forward half of traceability: what did this idea become?"""
+    identity = await register(client, f"f{unique_suffix}")
+    session_id = await open_session(client, f"f{unique_suffix}")
+
+    idea = (
+        await client.post(
+            "/api/ideas", json={"title": "Automate the reminders", "session_id": session_id}
+        )
+    ).json()
+    decision = (
+        await client.post(
+            "/api/decisions",
+            json={
+                "statement": "Proceed with automated reminders.",
+                "session_id": session_id,
+                "idea_id": idea["id"],
+            },
+        )
+    ).json()
+
+    # The idea records what it became.
+    promoted = (await client.get(f"/api/ideas/{idea['id']}")).json()
+    assert promoted["status"] == "converted"
+    assert promoted["converted_to"] == {"type": "decision", "id": decision["id"]}
+
+    # Work can be found by the idea or the decision it came from.
+    task = (
+        await client.post(
+            "/api/tasks",
+            json={
+                "title": "Draft the reminder spec",
+                "owner_id": identity["user"]["id"],
+                "session_id": session_id,
+                "idea_id": idea["id"],
+                "decision_id": decision["id"],
+                "status": "backlog",
+            },
+        )
+    ).json()
+
+    by_idea = (await client.get("/api/tasks", params={"idea_id": idea["id"]})).json()
+    assert [item["id"] for item in by_idea["items"]] == [task["id"]]
+
+    by_decision = (await client.get("/api/tasks", params={"decision_id": decision["id"]})).json()
+    assert [item["id"] for item in by_decision["items"]] == [task["id"]]
+
+    # And another team sees neither.
+    await register(client, f"g{unique_suffix}")
+    other_team = (await client.get("/api/tasks", params={"idea_id": idea["id"]})).json()
+    assert other_team["items"] == []
+
+
 async def test_minutes_are_frozen_complete_and_downloadable(
     client: AsyncClient, unique_suffix: str
 ) -> None:

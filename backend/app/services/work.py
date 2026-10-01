@@ -901,6 +901,8 @@ def list_tasks(
     owner_id: uuid.UUID | None = None,
     project_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
+    idea_id: uuid.UUID | None = None,
+    decision_id: uuid.UUID | None = None,
     include_closed: bool = True,
     limit: int = 200,
 ) -> list[Task]:
@@ -915,6 +917,11 @@ def list_tasks(
         query = query.where(Task.project_id == project_id)
     if session_id:
         query = query.where(Task.session_id == session_id)
+    # The forward half of traceability: what did this idea or decision become?
+    if idea_id:
+        query = query.where(Task.idea_id == idea_id)
+    if decision_id:
+        query = query.where(Task.decision_id == decision_id)
     return list(
         db.execute(
             query.order_by(

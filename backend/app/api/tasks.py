@@ -39,6 +39,8 @@ def list_tasks(
     owner_id: uuid.UUID | None = None,
     project_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
+    idea_id: uuid.UUID | None = None,
+    decision_id: uuid.UUID | None = None,
     include_closed: bool = True,
     context=ContextDep,
     db: DbSession = DbDep,  # type: ignore[assignment]
@@ -50,6 +52,8 @@ def list_tasks(
         owner_id=owner_id,
         project_id=project_id,
         session_id=session_id,
+        idea_id=idea_id,
+        decision_id=decision_id,
         include_closed=include_closed,
     )
     return {"items": [work.task_row(db, task) for task in tasks], "total": len(tasks)}

@@ -61,6 +61,37 @@ With the browser's default font raised from 16px to 24px (which is what `rem`
 units follow) and a 360px viewport: no horizontal scrolling and no element
 pushed past the right edge on Today or on the game screen.
 
+## What a screen reader is given (6F)
+
+`scripts/ux-accessibility-tree.mjs` reads the browser's accessibility tree, which
+is what a screen reader consumes.
+
+| Screen | Landmarks | Structure | Named controls |
+|---|---|---|---|
+| Today | banner, main, navigation | one h1, then h2 sections with an h3 meeting title | all buttons and links named |
+| Capture sheet | banner, main, navigation, **dialog: "Capture an idea"** | headings continue into the dialog | Close, Cancel, Save idea |
+| Game | main | **h1 game name, h2 the question**, h2 Scores | all named, options announce as "A Mombasa" |
+
+Two gaps were found and fixed: the game screen exposed no `main` landmark, and
+the question was plain text rather than a heading. The game screen is where a
+screen reader user most needs the structure, because the question is the whole
+point of that screen.
+
+## Errors and logs (6I)
+
+Every request gets a reference. It appears in the response header, in the log
+line, and in the body of a failure, so a user saying "it said something went
+wrong" can be matched to the exact traceback.
+
+```
+2026-10-01 06:31:11,369 INFO mshikaki GET /api/nope -> 404 in 177ms [8de7e49ff691]
+x-request-id: 8de7e49ff691
+```
+
+The interface never shows a status code. Known failures map to a sentence
+("Please use your work email address"), and an unexpected one says "Something
+went wrong on our side" with the reference to quote.
+
 ## Bad connection (6G)
 
 With Chrome throttled to 400 kbps and 400ms latency:

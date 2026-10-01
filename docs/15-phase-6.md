@@ -117,9 +117,10 @@ Done and verified on the deployed app:
 
 Open:
 
-- **6F** Partial. Keyboard focus and contrast are measured and passing
+- **6F** Partial. Keyboard focus, contrast, tap targets, text scaling and the
+  accessibility tree are measured and passing
   ([18-ux-verification.md](18-ux-verification.md)). Still to do: a real
-  projector, a real phone, text scaling and a screen reader.
+  projector, a real phone, and listening to an actual screen reader.
 - **6G** Partial. Run Mode and the game screen both hold at just over a second on
   throttled 3G, measured ([18-ux-verification.md](18-ux-verification.md)). Not yet
   tested on a real phone on a real KBC connection.

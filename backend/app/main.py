@@ -12,6 +12,8 @@ the static mount below finds no directory and is skipped.
 from __future__ import annotations
 
 import logging
+import time
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -64,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_error_handlers(app)
     add_csrf_guard(app)
+    add_request_logging(app)
 
     if settings.is_development:
         # Only the Vite dev server needs this. Production is same-origin.
@@ -116,6 +119,46 @@ def add_csrf_guard(app: FastAPI) -> None:
                 content=error_body("request.untrusted", "Missing request header."),
             )
         return await call_next(request)
+
+
+def add_request_logging(app: FastAPI) -> None:
+    """One line per request, with an id a person can quote.
+
+    The id goes into the response header and into the error body, so a user
+    reporting "it said something went wrong" can be matched to the stack trace in
+    the logs without guessing at timestamps.
+    """
+
+    @app.middleware("http")
+    async def request_logging(request, call_next):
+        request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
+        request.state.request_id = request_id
+        started = time.perf_counter()
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                "unhandled error %s %s [%s]",
+                request.method,
+                request.url.path,
+                request_id,
+            )
+            raise
+
+        duration_ms = (time.perf_counter() - started) * 1000
+        response.headers["X-Request-Id"] = request_id
+        if not request.url.path.startswith("/assets"):
+            logger.info(
+                "%s %s -> %s in %.0fms [%s]",
+                request.method,
+                request.url.path,
+                response.status_code,
+                duration_ms,
+                request_id,
+            )
+            if duration_ms > 2000:
+                logger.warning("slow request %s took %.0fms", request.url.path, duration_ms)
+        return response
 
 
 def mount_spa(app: FastAPI, settings: Settings) -> None:

@@ -84,9 +84,18 @@ def register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def _unexpected(_: Request, exc: Exception) -> JSONResponse:
-        # Logged by the ASGI server; the client gets a stable, non-leaky message.
+    async def _unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # The traceback is logged by the request middleware, with the same id the
+        # client is shown, so a report can be traced to the exact failure.
+        request_id = getattr(request.state, "request_id", None)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_body("internal_error", "Something went wrong on our side."),
+            content=error_body(
+                "internal_error",
+                "Something went wrong on our side. Please try again.",
+                {"request_id": request_id} if request_id else None,
+            ),
+            # This response is built above the request middleware, so the header
+            # has to be set here as well as there.
+            headers={"X-Request-Id": request_id} if request_id else None,
         )

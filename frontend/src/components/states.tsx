@@ -5,6 +5,29 @@ import type { ReactNode } from "react";
 import { Button, Card, Spinner } from "@/components/ui/kit";
 import { ApiError } from "@/api/client";
 
+/**
+ * What to say instead of a server code.
+
+ * The plan's rule: no technical error text in front of a user. The code stays in
+ * the logs and in the reference line, never as the message.
+ */
+const HUMAN_MESSAGES: Record<string, string> = {
+  "auth.required": "Please sign in again.",
+  "auth.invalid_credentials": "That email and password combination is not right.",
+  "request.invalid": "Hmm, that didn't save. Check the highlighted information and try again.",
+  "request.untrusted": "That request looked unsafe, so Mshikaki stopped it. Try again.",
+  "permission_denied": "You don't have permission to do that.",
+  "not_found": "We couldn't find that. It may have been removed.",
+  "conflict": "Somebody else changed this first. Reload and try again.",
+  "internal_error": "Something went wrong on our side. Please try again.",
+  "join.email_domain": "Please use your work email address.",
+  "minutes.not_closed": "Close the meeting first and Mshikaki will write the minutes.",
+  "session.already_active": "Another meeting is already running. Close it first.",
+  "task.owner_required": "Give the task an owner before moving it on.",
+  "blocker.owner_required": "Give the task an owner before blocking it.",
+  "idea.not_convertible": "That idea has already been dealt with.",
+};
+
 export function LoadingState({ label = "Loading" }: { label?: string }) {
   return (
     <div className="flex items-center justify-center py-10">
@@ -20,17 +43,24 @@ export function ErrorState({
   error: unknown;
   onRetry?: () => void;
 }) {
+  const apiError = error instanceof ApiError ? error : null;
   const message =
-    error instanceof ApiError
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : "Something went wrong.";
+    (apiError && (HUMAN_MESSAGES[apiError.code] ?? apiError.message)) ||
+    (error instanceof Error ? error.message : "Something went wrong.");
+  const reference =
+    apiError && apiError.status >= 500
+      ? String(apiError.details?.request_id ?? "")
+      : "";
 
   return (
     <Card className="border-red-200 bg-red-50">
       <p className="font-medium text-red-800">That did not work</p>
       <p className="mt-1 text-sm text-red-700">{message}</p>
+      {reference ? (
+        <p className="mt-1 text-xs text-red-600">
+          Reference {reference}. Quote it if you report this.
+        </p>
+      ) : null}
       {onRetry ? (
         <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
           Try again

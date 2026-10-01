@@ -210,7 +210,7 @@ export function AppLayout() {
           className="mt-6 flex items-center gap-2 rounded-xl border border-ember-500/30 bg-ember-500/10 px-3 py-2 text-xs font-medium text-ember-700 transition-colors hover:bg-ember-500/20"
         >
           <span aria-hidden>✨</span>
-          My Portfolio
+          Built by:Herman El-Maestro
           <span aria-hidden className="ml-auto text-ink-600">
             ↗
           </span>

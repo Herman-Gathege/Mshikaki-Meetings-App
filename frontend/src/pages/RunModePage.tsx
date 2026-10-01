@@ -29,6 +29,7 @@ import {
 } from "@/api/hooks";
 import type { SessionDetail } from "@/api/types";
 import { CaptureSheet } from "@/components/CaptureSheet";
+import { StartSessionButton } from "@/components/StartSessionButton";
 import { StatusBadge } from "@/components/badges";
 import { ErrorState, LoadingState } from "@/components/states";
 import { toast } from "@/components/toast";
@@ -77,22 +78,51 @@ export function RunModePage() {
     setDraftStage(null);
   }, [serverStage]);
 
-  // Released: the meeting ended, was cancelled, or has not started.
+  // Released: the meeting ended or was cancelled. Only act on data fetched since
+  // this page mounted, or a stale cached "planned" bounces the facilitator
+  // straight back out of the meeting they just started.
+  const settled = session.isFetchedAfterMount;
   useEffect(() => {
-    if (!data || released.current) return;
+    if (!data || released.current || !settled) return;
     if (data.status === "completed" || data.status === "cancelled") {
       released.current = true;
       toast("🍢 That's a wrap! Back to normal Mshikaki.");
       navigate(`/sessions/${data.id}`, { replace: true });
-    } else if (data.status === "planned") {
-      released.current = true;
-      navigate(`/sessions/${data.id}`, { replace: true });
     }
-  }, [data, navigate]);
+  }, [data, settled, navigate]);
 
   if (session.isPending) return <LoadingState label="Joining the meeting…" />;
   if (session.isError) return <ErrorState error={session.error} />;
   if (!data) return null;
+
+  // A planned meeting is not a live screen. Say so rather than showing steps that
+  // cannot do anything yet.
+  if (data.status === "planned") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-ink-900 px-5 text-white">
+        <Card className="max-w-lg bg-white/5 text-white">
+          <h2 className="text-3xl font-semibold">🍢 Not started yet</h2>
+          <p className="mt-2 text-white/70">
+            {canDrive
+              ? "Start the meeting and the room follows you into Run Mode."
+              : "Waiting for the facilitator to start the meeting."}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {canDrive ? (
+              <StartSessionButton sessionId={data.id} label="Start the meeting →" />
+            ) : null}
+            <ButtonLink
+              to={`/sessions/${data.id}`}
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+            >
+              Leave
+            </ButtonLink>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const index = STEPS.findIndex((entry) => entry.key === stage);
   const previous = index > 0 ? STEPS[index - 1]?.key : undefined;

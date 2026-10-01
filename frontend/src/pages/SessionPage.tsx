@@ -14,6 +14,7 @@ import {
   useTasks,
 } from "@/api/hooks";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { StartSessionButton } from "@/components/StartSessionButton";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { toast } from "@/components/toast";
@@ -85,12 +86,7 @@ export function SessionPage() {
 }
 
 function StartButton({ sessionId }: { sessionId: string }) {
-  const lifecycle = useSessionLifecycle(sessionId);
-  return (
-    <Button onClick={() => void lifecycle.start.mutateAsync()}>
-      {lifecycle.start.isPending ? "Starting..." : "Start session"}
-    </Button>
-  );
+  return <StartSessionButton sessionId={sessionId} />;
 }
 
 function CloseButton({ sessionId }: { sessionId: string }) {

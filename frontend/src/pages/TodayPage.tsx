@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { useMarkAttendance, useSessionParticipants, useSessions, useToday } from "@/api/hooks";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
+import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
 import { ButtonLink, Card } from "@/components/ui/kit";
 import { formatDateTime, formatRelative, isOverdue } from "@/lib/dates";
@@ -50,14 +51,13 @@ export function TodayPage() {
               </p>
               <AttendanceLine sessionId={session.id} />
             </div>
-            <ButtonLink
-              to={
-                session.status === "active" ? `/sessions/${session.id}/run` : `/sessions/${session.id}`
-              }
-              size="xl"
-            >
-              {session.status === "active" ? "Open Run Mode →" : "Start session →"}
-            </ButtonLink>
+            {session.status === "active" ? (
+              <ButtonLink to={`/sessions/${session.id}/run`} size="xl">
+                Open Run Mode →
+              </ButtonLink>
+            ) : (
+              <StartSessionButton sessionId={session.id} size="xl" />
+            )}
           </div>
         ) : (
           <EmptyState

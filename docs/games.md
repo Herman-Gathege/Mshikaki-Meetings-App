@@ -47,25 +47,33 @@ Design it so it does not need a migration.
 
 ## The question lifecycle
 
-Implemented in `frontend/src/pages/play.tsx`, host-paced, verified by
-`scripts/ux-game-flow.mjs`:
+Implemented in `frontend/src/pages/play.tsx` and `app/services/games.py`:
 
-question and progress -> answer option cards -> timer -> single locked answer ->
-reveal with the correct answer -> host scores the players who got it right ->
-next question (which clears the previous answer) -> results -> back into the
-meeting.
+question -> option cards and a shared countdown -> each player locks one answer
+in on their own phone -> the host reveals -> the right answers are scored ->
+next question (which opens a fresh window) -> results -> back into the meeting.
 
-The timer runs locally and the questions arrive with the play, so playing does not
-depend on the network. Starting an answer twice is impossible: the client locks
-after the first choice and the plan never creates a second one.
+The clock belongs to the question, not to a browser: `question_started_at` and
+`question_seconds` live on the play, `revealed_at` closes the window, and every
+phone draws the same seconds. Answering locks that player in and stops nothing
+for anybody else. Answers are one row per player per question (`game_answers`),
+so a second tap is the same answer rather than a second point, and the room is
+never handed the answer before the reveal.
+
+The rules are pure functions in `backend/app/domain/quiz.py`: what counts as a
+right answer, what the clock says, and what a right answer is worth (ten points,
+plus five for answering in the first half of the window). Prompt decks have no
+right answer, so they keep the host's manual "+10".
 
 ## Scoring and XP
 
-The host awards points by tapping a player, and can correct any score with a
-reason, which is recorded. On finish, positions are set and XP is awarded through
-the ledger: participation always earns, winning earns more, and every award is
-idempotent, so finishing twice does not pay twice. Caps and diminishing returns
-live in `backend/app/domain/xp.py`.
+A quiz question scores itself when the host reveals it, and one activity line
+records the reveal. Games without a right answer are scored by the host tapping a
+player. Any score can be corrected with a reason, and the correction is recorded.
+On finish, positions are set and XP is awarded through the ledger: participation
+always earns, winning earns more, and every award is idempotent, so finishing
+twice does not pay twice. Caps and diminishing returns live in
+`backend/app/domain/xp.py`.
 
 Achievements are evaluated when a session closes, so the bragging rights settle at
 the end of the meeting rather than mid-game.

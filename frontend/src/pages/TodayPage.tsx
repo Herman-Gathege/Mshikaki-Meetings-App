@@ -50,15 +50,14 @@ export function TodayPage() {
               </p>
               <AttendanceLine sessionId={session.id} />
             </div>
-            <Link
+            <ButtonLink
               to={
                 session.status === "active" ? `/sessions/${session.id}/run` : `/sessions/${session.id}`
               }
+              size="xl"
             >
-              <Button size="xl">
-                {session.status === "active" ? "Open Run Mode →" : "Start session →"}
-              </Button>
-            </Link>
+              {session.status === "active" ? "Open Run Mode →" : "Start session →"}
+            </ButtonLink>
           </div>
         ) : (
           <EmptyState

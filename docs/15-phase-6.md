@@ -93,3 +93,32 @@ instruction, and every hesitation is recorded as a UX defect.
 Phase 6 is done when a first-time user can, unaided: understand the navigation,
 start a session, play a game, capture an idea, record a decision, assign a task,
 close the meeting and find the minutes.
+
+## Status
+
+Done and verified on the deployed app:
+
+- **6A/6B** Plain-language journeys in Run Mode, the five primary destinations
+  kept, icons in navigation, status badges that carry a word and a mark, and
+  confirmations after every important action.
+- **6C** Sessions list with one action per state, including Start, and Today
+  rebuilt around the three questions. A completed meeting reports what happened.
+- **6D** The full question lifecycle: options, local timer, single locked answer,
+  reveal with the correct answer, host scoring, results, and Continue the
+  meeting. No per-phone realtime.
+- **6E** Nine-section minutes generated from the frozen summary, downloadable as
+  a printable document, with the WhatsApp text export kept.
+- **6H** Append-only enforced by database trigger on `activity` and
+  `xp_events`, refused actions recorded for admins, tenancy and permission tests
+  in the suite, and the permission matrix unit-tested.
+- **6I** Backup and restore scripts with a rehearsal step, a CI workflow that
+  runs the same gate as a developer, health checks, and a deploy that applies
+  migrations and seeds itself.
+
+Open:
+
+- **6F** Keyboard and contrast verification on a real projector, and text
+  scaling. Targets and labels are in place; the checks are not.
+- **6G** Throttled-network timings for Run Mode and the game screen.
+- **6J** The human rehearsal. The checklist is in [17-ux.md](17-ux.md) and needs
+  a person who has never used Mshikaki.

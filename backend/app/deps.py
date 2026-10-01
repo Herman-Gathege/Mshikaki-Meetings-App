@@ -6,6 +6,7 @@ there is exactly one place to audit.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -134,6 +135,7 @@ def require_capability(capability: str):
 
     def dependency(context: RequestContext = ContextDep) -> RequestContext:  # type: ignore[assignment]
         if not can(context.actor, capability, Resource(team_id=context.team.id)):
+            log_denial(context.actor, capability)
             raise PermissionDeniedError()
         return context
 
@@ -143,7 +145,35 @@ def require_capability(capability: str):
 def ensure_can(actor: Actor, capability: str, resource: Resource | None = None) -> None:
     """For entity-level decisions, where the caller has loaded the target already."""
     if not can(actor, capability, resource):
+        log_denial(actor, capability)
         raise PermissionDeniedError()
+
+
+def log_denial(actor: Actor, capability: str) -> None:
+    """A refused action is part of the record.
+
+    Written in its own short transaction so it survives even when the refused
+    request rolls back. Admin-visible only: this is an audit fact, not a
+    scoreboard, and it must never become a way to watch people.
+    """
+    if actor.team_id is None:
+        return
+    from app.services.activity import record_activity
+
+    try:
+        with get_session_factory()() as db:
+            record_activity(
+                db,
+                team_id=actor.team_id,
+                actor=actor,
+                verb="permission.denied",
+                target_type="permission",
+                target_id=None,
+                payload={"action": capability},
+            )
+            db.commit()
+    except Exception:  # pragma: no cover - a refusal must not fail because of logging
+        logging.getLogger("mshikaki").exception("could not record a refused action")
 
 
 def is_owner(context: RequestContext) -> bool:

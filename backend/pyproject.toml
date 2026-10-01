@@ -41,6 +41,11 @@ src = ["app", "tests"]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["B008"]  # FastAPI's Depends() in defaults is the documented pattern
 
+[tool.ruff.lint.per-file-ignores]
+# The minutes template is HTML and CSS: those lines are markup, not code, and
+# wrapping them for a linter would make the document harder to read.
+"app/domain/minutes.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

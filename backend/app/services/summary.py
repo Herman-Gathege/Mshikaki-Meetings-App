@@ -210,6 +210,10 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
         blockers_raised=raised,
         blockers_resolved=resolved,
         xp_awards=awards,
+        agenda=[
+            {"title": item.title, "covered": item.covered_at is not None}
+            for item in session.agenda_items
+        ],
         generated_at=datetime.now(timezone.utc),
     )
 

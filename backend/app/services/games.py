@@ -185,6 +185,7 @@ def play_state(db: DbSession, play: GamePlay) -> dict:
                 "choices": question.choices,
                 "category": question.category,
                 "media_url": question.media_url,
+                "explanation": question.explanation,
             }
             if question
             else None

@@ -27,14 +27,21 @@ import { LoadingState, ErrorState } from "@/components/states";
 import { Button, Card, Field, Input, Select } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
 
-const STEPS = ["Play", "Capture", "Decide", "Assign", "Close"] as const;
-type Step = (typeof STEPS)[number];
+// The journey is stated in the words a facilitator would use out loud.
+const STEPS = [
+  { key: "play", label: "🎲 Let's play" },
+  { key: "capture", label: "💡 What are we thinking" },
+  { key: "decide", label: "🧠 What did we decide" },
+  { key: "assign", label: "🎯 Who's got this" },
+  { key: "close", label: "🍢 That's a wrap" },
+] as const;
+type Step = (typeof STEPS)[number]["key"];
 
 export function RunModePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const session = useSession(sessionId);
   const lifecycle = useSessionLifecycle(sessionId ?? "");
-  const [step, setStep] = useState<Step>("Play");
+  const [step, setStep] = useState<Step>("play");
   const [captureOpen, setCaptureOpen] = useState(false);
 
   if (session.isPending) return <LoadingState />;
@@ -42,7 +49,7 @@ export function RunModePage() {
   if (!session.data) return null;
 
   const data = session.data;
-  const index = STEPS.indexOf(step);
+  const index = STEPS.findIndex((entry) => entry.key === step);
 
   return (
     <div className="min-h-dvh bg-ink-900 pb-24 text-white">
@@ -66,11 +73,11 @@ export function RunModePage() {
       </header>
 
       <nav className="mx-auto flex max-w-5xl gap-2 px-5 py-4">
-        {STEPS.map((name, position) => (
+        {STEPS.map((entry, position) => (
           <button
-            key={name}
+            key={entry.key}
             type="button"
-            onClick={() => setStep(name)}
+            onClick={() => setStep(entry.key)}
             className={
               "flex-1 rounded-xl px-3 py-3 text-sm font-medium " +
               (position === index
@@ -78,19 +85,19 @@ export function RunModePage() {
                 : "bg-white/10 text-white/70 hover:bg-white/20")
             }
           >
-            {position + 1}. {name}
+            {entry.label}
           </button>
         ))}
       </nav>
 
       <main className="mx-auto max-w-5xl px-5">
-        {step === "Play" ? <PlayStep sessionId={data.id} /> : null}
-        {step === "Capture" ? (
+        {step === "play" ? <PlayStep sessionId={data.id} /> : null}
+        {step === "capture" ? (
           <CaptureStep sessionId={data.id} onOpenCapture={() => setCaptureOpen(true)} />
         ) : null}
-        {step === "Decide" ? <DecideStep sessionId={data.id} /> : null}
-        {step === "Assign" ? <AssignStep sessionId={data.id} /> : null}
-        {step === "Close" ? <CloseStep sessionId={data.id} /> : null}
+        {step === "decide" ? <DecideStep sessionId={data.id} /> : null}
+        {step === "assign" ? <AssignStep sessionId={data.id} /> : null}
+        {step === "close" ? <CloseStep sessionId={data.id} /> : null}
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-ink-900/95 px-5 py-4 backdrop-blur">
@@ -99,7 +106,7 @@ export function RunModePage() {
             variant="ghost"
             className="text-white hover:bg-white/10"
             disabled={index === 0}
-            onClick={() => setStep(STEPS[Math.max(0, index - 1)] ?? "Play")}
+            onClick={() => setStep(STEPS[Math.max(0, index - 1)]?.key ?? "play")}
           >
             Back
           </Button>
@@ -124,9 +131,13 @@ export function RunModePage() {
             ) : null}
             <Button
               size="lg"
-              onClick={() => setStep(STEPS[Math.min(STEPS.length - 1, index + 1)] ?? "Close")}
+              onClick={() =>
+                setStep(STEPS[Math.min(STEPS.length - 1, index + 1)]?.key ?? "close")
+              }
             >
-              {index === STEPS.length - 1 ? "Finish" : `Next: ${STEPS[index + 1]}`}
+              {index === STEPS.length - 1
+                ? "Finish"
+                : `Next: ${STEPS[index + 1]?.label ?? ""}`}
             </Button>
           </div>
         </div>

@@ -24,6 +24,8 @@ concrete, opinionated thing to disagree with.
 | 12 | [Decision log](12-decision-log.md) | D-numbers for every choice, for `/plan` to cite |
 | 13 | [Plan brief](13-plan-brief.md) | The single condensed report to hand to `/plan` |
 | 14 | [Implementation plan](14-implementation-plan.md) | The MVP 1 plan: architecture, repo shape, deployment, and every phase's tickets |
+| 15 | [Phase 6](15-phase-6.md) | The current phase: human UX, play experience and hardening |
+| 16 | [UX audit](16-ux-audit.md) | Where the app made people think, and what changed |
 
 If you only want to plan, read **[13-plan-brief.md](13-plan-brief.md)** on its own.
 It restates everything a plan needs and points back to the detail documents.

@@ -5,12 +5,13 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session as DbSession
 
 from app.deps import ContextDep, DbDep, ensure_can, require_capability
+from app.domain import minutes as minutes_domain
 from app.domain.permissions import Resource, can
-from app.errors import PermissionDeniedError
+from app.errors import AppError, PermissionDeniedError
 from app.schemas import (
     AgendaRequest,
     AttendanceRequest,
@@ -358,6 +359,31 @@ def export_summary(
     session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
     snapshot = session.summary_snapshot or summary_service.build_snapshot(db, session)
     return summary_service.text_export(snapshot)
+
+
+@router.get("/sessions/{session_id}/minutes.html", response_class=HTMLResponse)
+def download_minutes(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> HTMLResponse:
+    """The minutes, rendered from the frozen summary. Nothing is regenerated here."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    if session.summary_snapshot is None:
+        raise AppError(
+            "Close the meeting first and Mshikaki will write the minutes.",
+            code="minutes.not_closed",
+        )
+    html = minutes_domain.render_minutes_html(
+        session.summary_snapshot,
+        team_name=context.team.name,
+        reference=f"MSHIKAKI-{session.sequence_no}-{str(session.id)[:8]}",
+    )
+    filename = f"minutes-{session.sequence_no}.html"
+    return HTMLResponse(
+        content=html,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/sessions/{session_id}/activity")

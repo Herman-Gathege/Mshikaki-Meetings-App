@@ -32,6 +32,7 @@ def build_summary(
     blockers_raised: list[dict[str, Any]],
     blockers_resolved: list[dict[str, Any]],
     xp_awards: list[dict[str, Any]],
+    agenda: list[dict[str, Any]] | None = None,
     generated_at: datetime,
 ) -> dict[str, Any]:
     attendees = [p for p in participants if p.get("attended", True)]
@@ -66,6 +67,7 @@ def build_summary(
             "absent": [p.get("name") for p in absent],
         },
         "games": games,
+        "agenda": agenda or [],
         "ideas": ideas,
         "decisions": decisions,
         "tasks_created": tasks_created,

@@ -1,0 +1,62 @@
+# The same gate developers run locally: make check.
+#
+# Nothing exotic: no deployment, no secrets, no Docker. It installs the two
+# toolchains and runs the tests that protect the product's promises.
+
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mshikaki
+          POSTGRES_PASSWORD: mshikaki
+          POSTGRES_DB: mshikaki_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mshikaki" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: development
+      APP_SECRET_KEY: ci-secret
+      POSTGRES_USER: mshikaki
+      POSTGRES_PASSWORD: mshikaki
+      POSTGRES_DB: mshikaki_test
+      POSTGRES_HOST: localhost
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run alembic upgrade head
+      - run: uv run python -m app.cli seed
+      - run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

@@ -8,6 +8,15 @@
 
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  Activity,
+  CalendarDays,
+  Gamepad2,
+  Lightbulb,
+  Target,
+  Trophy,
+  Users,
+} from "lucide-react";
 
 import { useLogout, useMe, useSearch } from "@/api/hooks";
 import { CaptureSheet } from "@/components/CaptureSheet";
@@ -15,11 +24,18 @@ import { Button, Input } from "@/components/ui/kit";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Today", end: true },
-  { to: "/sessions", label: "Sessions" },
-  { to: "/work", label: "Work" },
-  { to: "/ideas", label: "Ideas" },
-  { to: "/play", label: "Play" },
+  { to: "/", label: "Today", icon: CalendarDays, end: true },
+  { to: "/sessions", label: "Sessions", icon: Gamepad2, end: false },
+  { to: "/work", label: "Work", icon: Target, end: false },
+  { to: "/ideas", label: "Ideas", icon: Lightbulb, end: false },
+  { to: "/play", label: "Play", icon: Trophy, end: false },
+];
+
+const SECONDARY = [
+  { to: "/leaderboard", label: "Bragging rights", icon: Trophy, end: false },
+  { to: "/activity", label: "Activity", icon: Activity, end: false },
+  { to: "/projects", label: "Projects", icon: Target, end: false },
+  { to: "/team", label: "Team", icon: Users, end: false },
 ];
 
 export function AppLayout() {
@@ -136,24 +152,19 @@ export function AppLayout() {
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-ink-200 bg-white p-4 lg:block">
         <p className="px-2 py-3 text-lg font-semibold tracking-tight text-ember-600">MSHIKAKI</p>
         <nav className="space-y-1">
-          {[
-            ...NAV,
-            { to: "/leaderboard", label: "Leaderboard" },
-            { to: "/activity", label: "Activity" },
-            { to: "/projects", label: "Projects" },
-            { to: "/team", label: "Team" },
-          ].map((item) => (
+          {[...NAV, ...SECONDARY].map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={"end" in item ? item.end : false}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
-                  "block rounded-lg px-3 py-2 text-sm",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
                   isActive ? "bg-ink-100 font-medium" : "hover:bg-ink-100",
                 )
               }
             >
+              <item.icon aria-hidden className="size-4 shrink-0" />
               {item.label}
             </NavLink>
           ))}
@@ -184,11 +195,12 @@ export function AppLayout() {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    "flex h-16 items-center justify-center text-xs font-medium",
+                    "flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-medium",
                     isActive ? "text-ember-600" : "text-ink-600",
                   )
                 }
               >
+                <item.icon aria-hidden className="size-5" />
                 {item.label}
               </NavLink>
             </li>

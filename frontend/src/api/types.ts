@@ -242,6 +242,7 @@ export interface GamePlay {
     choices: string[] | null;
     category: string | null;
     media_url: string | null;
+    explanation: string | null;
   } | null;
   scores: {
     id: string;

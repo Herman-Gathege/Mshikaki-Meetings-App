@@ -212,10 +212,10 @@ export interface Task {
   project_id: string | null;
   origin: {
     session_id: string | null;
+    agenda_item_id: string | null;
     idea_id: string | null;
     decision_id: string | null;
   };
-  agenda_item_id: string | null;
   collaborators: { id: string; name: string }[];
   open_blockers: { id: string; reason: string; raised_by: string; raised_at: string | null }[];
   created_at: string;

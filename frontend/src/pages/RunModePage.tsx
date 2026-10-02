@@ -564,7 +564,7 @@ function AgendaStep({
   const itemNotes = session.notes.filter((row) => row.agenda_item_id === item.id);
   const itemIdeas = (ideas.data?.items ?? []).filter((idea) => idea.agenda_item_id === item.id);
   const itemActions = (tasks.data?.items ?? []).filter(
-    (task) => task.agenda_item_id === item.id,
+    (task) => task.origin?.agenda_item_id === item.id,
   );
   const itemDecisions = (decisions.data?.items ?? []).filter(
     (decision) => decision.agenda_item_id === item.id,

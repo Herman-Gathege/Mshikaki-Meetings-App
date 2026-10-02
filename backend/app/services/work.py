@@ -70,7 +70,7 @@ def task_row(db: DbSession, task: Task) -> dict:
         "project_id": str(task.project_id) if task.project_id else None,
         "origin": {
             "session_id": str(task.session_id) if task.session_id else None,
-        "agenda_item_id": str(task.agenda_item_id) if task.agenda_item_id else None,
+            "agenda_item_id": str(task.agenda_item_id) if task.agenda_item_id else None,
             "idea_id": str(task.idea_id) if task.idea_id else None,
             "decision_id": str(task.decision_id) if task.decision_id else None,
         },

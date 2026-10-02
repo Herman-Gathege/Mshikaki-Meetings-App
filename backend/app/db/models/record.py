@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.mixins import SoftDelete, UuidPk
+from app.db.mixins import SoftDelete, Timestamps, UuidPk
 from app.domain.enums import COMMENT_TARGETS, ActivityVisibility, ActorType
 
 
@@ -87,3 +87,34 @@ class Comment(UuidPk, SoftDelete, Base):
     @property
     def valid_targets(self) -> frozenset[str]:
         return COMMENT_TARGETS
+
+
+class Note(UuidPk, Timestamps, SoftDelete, Base):
+    """A line worth remembering: the meeting scratchpad, not a document.
+
+    Notes are deliberately not ideas, decisions or tasks. Somebody says
+    "finance will confirm tomorrow" and that has to be writable in one line
+    without pretending it is work. A note belongs to a meeting and, when the
+    room is working through one, to the agenda item under discussion.
+    """
+
+    __tablename__ = "notes"
+    __table_args__ = (
+        Index("ix_notes_session", "session_id"),
+        Index("ix_notes_agenda_item", "agenda_item_id"),
+    )
+
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("teams.id", ondelete="RESTRICT"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    agenda_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("agenda_items.id", ondelete="SET NULL"), nullable=True
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    author_name: Mapped[str] = mapped_column(String(120), default="Someone", nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)

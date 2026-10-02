@@ -57,7 +57,23 @@ VERBS: dict[str, VerbSpec] = {
     "agenda.added": V("agenda.added", 'added "{title}" to the agenda'),
     "agenda.updated": V("agenda.updated", 'changed the agenda item "{title}"'),
     "agenda.covered": V("agenda.covered", 'covered the agenda item "{title}"'),
+    "agenda.outcome": V(
+        "agenda.outcome",
+        'closed "{title}" as {outcome}',
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
     "agenda.removed": V("agenda.removed", 'removed the agenda item "{title}"'),
+    "meeting.started": V(
+        "meeting.started",
+        "took the room into the meeting",
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
+    "note.added": V(
+        "note.added",
+        "noted: {body}",
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
+    "note.removed": V("note.removed", "removed a note"),
     # Games
     "game.started": V(
         "game.started", 'started "{game}"', visibility=ActivityVisibility.PARTICIPANTS.value

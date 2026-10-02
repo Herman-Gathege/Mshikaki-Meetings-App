@@ -31,7 +31,7 @@ from app.db.models.identity import (
     User,
 )
 from app.db.models.meeting import AgendaItem, Session, SessionParticipant
-from app.db.models.record import Activity, Comment
+from app.db.models.record import Activity, Comment, Note
 from app.db.models.work import (
     Blocker,
     Decision,
@@ -63,6 +63,7 @@ __all__ = [
     "Invite",
     "Membership",
     "Notification",
+    "Note",
     "Organization",
     "Project",
     "Season",

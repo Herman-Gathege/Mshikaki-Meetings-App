@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from app.domain.enums import SessionStatus
 
-STAGES: tuple[str, ...] = ("play", "capture", "decide", "assign", "close")
+STAGES: tuple[str, ...] = ("play", "agenda", "capture", "decide", "assign", "close")
+
+# The journey a meeting actually takes. `capture`, `decide` and `assign` are the
+# older per-topic screens: they stay valid so a meeting sitting on one of them is
+# never stranded, but the agenda carries the room now, and the agenda screen holds
+# the work those three used to split up.
+MAIN_PATH: tuple[str, ...] = ("play", "agenda", "close")
 
 DEFAULT_STAGE = "play"
 

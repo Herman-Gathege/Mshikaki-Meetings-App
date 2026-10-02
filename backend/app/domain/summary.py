@@ -33,6 +33,7 @@ def build_summary(
     blockers_resolved: list[dict[str, Any]],
     xp_awards: list[dict[str, Any]],
     agenda: list[dict[str, Any]] | None = None,
+    notes: list[dict[str, Any]] | None = None,
     generated_at: datetime,
 ) -> dict[str, Any]:
     attendees = [p for p in participants if p.get("attended", True)]
@@ -61,6 +62,8 @@ def build_summary(
             "tasks_completed": len(tasks_completed),
             "blockers_raised": len(blockers_raised),
             "blockers_resolved": len(blockers_resolved),
+            "notes": len(notes or []),
+            "agenda_items": len(agenda or []),
         },
         "attendance": {
             "present": [p.get("name") for p in attendees],
@@ -68,6 +71,7 @@ def build_summary(
         },
         "games": games,
         "agenda": agenda or [],
+        "notes": notes or [],
         "ideas": ideas,
         "decisions": decisions,
         "tasks_created": tasks_created,
@@ -110,20 +114,33 @@ def render_text(summary: dict[str, Any]) -> str:
             lines.append(f"- {game.get('name', 'Game')}: {winner} 🏆")
         lines.append("")
 
+    agenda = summary.get("agenda") or []
+    if agenda:
+        lines.append("*Agenda*")
+        for item in agenda:
+            title = item.get("title", "untitled")
+            outcome = item.get("outcome")
+            lines.append(f"- {title}" + (f" ({outcome})" if outcome else ""))
+        lines.append("")
+
     ideas = summary.get("ideas") or []
     if ideas:
         lines.append(f"*Ideas ({len(ideas)})*")
         for idea in ideas:
             author = idea.get("author") or "someone"
             status = idea.get("status") or "new"
-            lines.append(f"- {idea.get('title', 'untitled')} ({author}, {status})")
+            under = idea.get("agenda_title")
+            suffix = f" under {under}" if under else ""
+            lines.append(f"- {idea.get('title', 'untitled')} ({author}, {status}){suffix}")
         lines.append("")
 
     decisions = summary.get("decisions") or []
     if decisions:
         lines.append(f"*Decisions ({len(decisions)})*")
         for decision in decisions:
-            lines.append(f"- {decision.get('statement', 'untitled')}")
+            under = decision.get("agenda_title")
+            suffix = f" ({under})" if under else ""
+            lines.append(f"- {decision.get('statement', 'untitled')}{suffix}")
         lines.append("")
 
     tasks = summary.get("tasks_created") or []
@@ -134,6 +151,13 @@ def render_text(summary: dict[str, Any]) -> str:
             due = task.get("due_date")
             suffix = f" - due {due}" if due else ""
             lines.append(f"- {task.get('title', 'untitled')} → {owner}{suffix}")
+        lines.append("")
+
+    notes = summary.get("notes") or []
+    if notes:
+        lines.append(f"*Notes ({len(notes)})*")
+        for note in notes:
+            lines.append(f"- {note.get('body', '')}")
         lines.append("")
 
     raised = (summary.get("blockers") or {}).get("raised") or []

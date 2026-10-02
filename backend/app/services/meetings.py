@@ -15,11 +15,13 @@ from app.db.models import (
     Guest,
     Idea,
     Membership,
+    Note,
     SessionParticipant,
     Task,
     User,
 )
 from app.db.models import Session as MeetingSession
+from app.domain import agenda as agenda_rules
 from app.domain import run_mode as run_mode_rules
 from app.domain import sessions as session_rules
 from app.domain.enums import GamePlayStatus, ParticipantRole, SessionStatus, TaskStatus
@@ -511,9 +513,17 @@ def session_detail(db: DbSession, session: MeetingSession) -> dict:
                 "title": item.title,
                 "covered": item.covered_at is not None,
                 "timebox_minutes": item.timebox_minutes,
+                "outcome": item.outcome,
+                "is_current": item.id == session.current_agenda_item_id,
             }
             for item in session.agenda_items
         ],
+        # Where the room is in the list, counted the way a facilitator says it.
+        "agenda_position": agenda_progress(session),
+        "current_agenda_item_id": (
+            str(session.current_agenda_item_id) if session.current_agenda_item_id else None
+        ),
+        "notes": notes_for(db, session),
         "ideas": [
             {
                 "id": str(idea.id),
@@ -622,6 +632,247 @@ def mark_game_finished(db: DbSession, *, session: MeetingSession, play_id: uuid.
 
 
 # --- agenda --------------------------------------------------------------------
+
+
+def _agenda_item(db: DbSession, session: MeetingSession, item_id: uuid.UUID) -> AgendaItem:
+    item = db.get(AgendaItem, item_id)
+    if item is None or item.session_id != session.id:
+        raise NotFoundError("That agenda item does not exist.")
+    return item
+
+
+def start_agenda(
+    db: DbSession, *, session: MeetingSession, actor, actor_name: str
+) -> MeetingSession:
+    """Take the room into the meeting itself, at the first item.
+
+    This is the "Start meeting" answer to the opening choice: no game, straight
+    to what the room came to talk about.
+    """
+    items = session.agenda_items
+    previously = session.current_agenda_item_id
+    # Entering the meeting lands on the first item. Coming back to the agenda
+    # after a game or a detour leaves the room exactly where it was.
+    if previously is None:
+        session.current_agenda_item_id = items[0].id if items else None
+    session.run_mode_stage = "agenda"
+    session.run_mode_updated_at = datetime.now(timezone.utc)
+    db.flush()
+    if previously != session.current_agenda_item_id:
+        first = items[0] if items else None
+        record_activity(
+            db,
+            team_id=session.team_id,
+            session_id=session.id,
+            actor=actor,
+            actor_name=actor_name,
+            verb="meeting.started",
+            target_type="session",
+            target_id=session.id,
+            payload={"title": first.title if first else "no agenda"},
+        )
+    return session
+
+
+def current_agenda_index(db: DbSession, session: MeetingSession) -> int:
+    """Where the room is in the list, zero-based. -1 when nothing is set."""
+    items = session.agenda_items
+    for index, item in enumerate(items):
+        if item.id == session.current_agenda_item_id:
+            return index
+    return -1
+
+
+def set_current_agenda(
+    db: DbSession, *, session: MeetingSession, item_id: uuid.UUID, actor, actor_name: str
+) -> MeetingSession:
+    """The facilitator jumps to an item: a correction, not a new habit."""
+    item = _agenda_item(db, session, item_id)
+    session.current_agenda_item_id = item.id
+    session.run_mode_stage = "agenda"
+    session.run_mode_updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return session
+
+
+def advance_agenda(
+    db: DbSession, *, session: MeetingSession, actor, actor_name: str
+) -> MeetingSession:
+    """Finish this item and move to the next one, or wrap the meeting up."""
+    items = session.agenda_items
+    index = current_agenda_index(db, session)
+    leaving = items[index] if 0 <= index < len(items) else None
+
+    if leaving is not None and leaving.covered_at is None:
+        leaving.covered_at = datetime.now(timezone.utc)
+        record_activity(
+            db,
+            team_id=session.team_id,
+            session_id=session.id,
+            actor=actor,
+            actor_name=actor_name,
+            verb="agenda.covered",
+            target_type="session",
+            target_id=session.id,
+            payload={"title": leaving.title},
+        )
+
+    following = agenda_rules.next_index(index if index >= 0 else 0, len(items))
+    if following is None:
+        # The agenda is done. The room goes to the wrap, where the summary is.
+        session.current_agenda_item_id = None
+        session.run_mode_stage = "close"
+    else:
+        session.current_agenda_item_id = items[following].id
+        session.run_mode_stage = "agenda"
+    session.run_mode_updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return session
+
+
+def set_agenda_outcome(
+    db: DbSession,
+    *,
+    session: MeetingSession,
+    item_id: uuid.UUID,
+    outcome: str,
+    actor,
+    actor_name: str,
+) -> AgendaItem:
+    """What the room did with an item, in one word."""
+    item = _agenda_item(db, session, item_id)
+    try:
+        agenda_rules.ensure_outcome(outcome)
+    except agenda_rules.UnknownOutcome as exc:
+        raise AppError(
+            f"'{outcome}' is not how an agenda item ends.",
+            code="agenda.bad_outcome",
+        ) from exc
+    item.outcome = outcome
+    item.outcome_at = datetime.now(timezone.utc)
+    db.flush()
+    record_activity(
+        db,
+        team_id=session.team_id,
+        session_id=session.id,
+        actor=actor,
+        actor_name=actor_name,
+        verb="agenda.outcome",
+        target_type="session",
+        target_id=session.id,
+        payload={
+            "title": item.title,
+            "outcome": agenda_rules.OUTCOME_LABELS.get(outcome, outcome),
+        },
+    )
+    return item
+
+
+# --- notes ---------------------------------------------------------------------
+
+
+def add_note(
+    db: DbSession,
+    *,
+    session: MeetingSession,
+    body: str,
+    agenda_item_id: uuid.UUID | None,
+    actor,
+    actor_name: str,
+) -> Note:
+    """One line of meeting scratchpad, attached to the item under discussion."""
+    if agenda_item_id is not None:
+        _agenda_item(db, session, agenda_item_id)
+    note = Note(
+        team_id=session.team_id,
+        session_id=session.id,
+        agenda_item_id=agenda_item_id,
+        author_id=actor.user_id,
+        author_name=actor_name,
+        body=body.strip()[:2000],
+    )
+    db.add(note)
+    db.flush()
+    record_activity(
+        db,
+        team_id=session.team_id,
+        session_id=session.id,
+        actor=actor,
+        actor_name=actor_name,
+        verb="note.added",
+        target_type="note",
+        target_id=note.id,
+        payload={"body": note.body},
+    )
+    return note
+
+
+def list_notes(db: DbSession, *, session: MeetingSession) -> list[dict]:
+    return notes_for(db, session)
+
+
+def notes_for(db: DbSession, session: MeetingSession) -> list[dict]:
+    rows = (
+        db.execute(
+            select(Note)
+            .where(Note.session_id == session.id, Note.deleted_at.is_(None))
+            .order_by(Note.created_at)
+        )
+        .scalars()
+        .all()
+    )
+    return [note_row(note) for note in rows]
+
+
+def agenda_progress(session: MeetingSession) -> dict:
+    """'Agenda 2 of 5', for the room and for the facilitator."""
+    items = session.agenda_items
+    index = next(
+        (
+            position
+            for position, item in enumerate(items)
+            if item.id == session.current_agenda_item_id
+        ),
+        -1,
+    )
+    step = agenda_rules.progress(index, len(items))
+    return {
+        "position": step.position,
+        "total": step.total,
+        "remaining": step.remaining,
+        "is_last": step.is_last,
+    }
+
+
+def note_row(note: Note) -> dict:
+    return {
+        "id": str(note.id),
+        "body": note.body,
+        "author": note.author_name,
+        "agenda_item_id": str(note.agenda_item_id) if note.agenda_item_id else None,
+        "created_at": note.created_at.isoformat() if note.created_at else None,
+    }
+
+
+def remove_note(
+    db: DbSession, *, session: MeetingSession, note_id: uuid.UUID, actor, actor_name: str
+) -> None:
+    note = db.get(Note, note_id)
+    if note is None or note.session_id != session.id or note.deleted_at is not None:
+        raise NotFoundError("That note does not exist.")
+    note.deleted_at = datetime.now(timezone.utc)
+    db.flush()
+    record_activity(
+        db,
+        team_id=session.team_id,
+        session_id=session.id,
+        actor=actor,
+        actor_name=actor_name,
+        verb="note.removed",
+        target_type="note",
+        target_id=note.id,
+        payload={},
+    )
 
 
 def add_agenda_item(

@@ -47,6 +47,7 @@ def record_decision(
         statement=payload.statement,
         session_id=payload.session_id,
         idea_id=payload.idea_id,
+        agenda_item_id=payload.agenda_item_id,
         rationale=payload.rationale,
         standalone_reason=payload.standalone_reason,
     )

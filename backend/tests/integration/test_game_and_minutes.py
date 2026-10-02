@@ -283,10 +283,11 @@ async def test_minutes_are_frozen_complete_and_downloadable(
         "3. Opening and play",
         "4. Ideas raised",
         "5. Decisions made",
-        "6. Action items",
-        "7. Blockers",
-        "8. Closing summary",
-        "9. Record information",
+        "6. Notes",
+        "7. Action items",
+        "8. Blockers",
+        "9. Closing summary",
+        "10. Record information",
     ):
         assert section in html, f"{section} missing from the minutes"
     assert "Proceed with automation." in html

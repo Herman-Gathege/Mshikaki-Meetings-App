@@ -92,6 +92,7 @@ def create_task(
         session_id=payload.session_id,
         idea_id=payload.idea_id,
         decision_id=payload.decision_id,
+        agenda_item_id=payload.agenda_item_id,
         collaborator_ids=payload.collaborator_ids,
     )
     return work.task_row(db, task)

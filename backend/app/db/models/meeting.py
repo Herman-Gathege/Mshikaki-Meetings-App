@@ -70,6 +70,13 @@ class Session(UuidPk, Timestamps, SoftDelete, Base):
     run_mode_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # The agenda item the room is on. The facilitator moves it, everybody else
+    # polls the session and follows, exactly like the Run Mode stage.
+    current_agenda_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("agenda_items.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -78,7 +85,12 @@ class Session(UuidPk, Timestamps, SoftDelete, Base):
         back_populates="session", cascade="all, delete-orphan"
     )
     agenda_items: Mapped[list[AgendaItem]] = relationship(
-        back_populates="session", cascade="all, delete-orphan", order_by="AgendaItem.position"
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="AgendaItem.position",
+        # Two paths now link the tables (an item belongs to a session, and a
+        # session points at the item it is on). The list is the ownership side.
+        foreign_keys="AgendaItem.session_id",
     )
 
 
@@ -128,5 +140,11 @@ class AgendaItem(UuidPk, Timestamps, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     timebox_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     covered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What the room did with this item: accomplished, pending, assigned, or
+    # nothing decided. Plain words in the UI, one small vocabulary in the record.
+    outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    outcome_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    session: Mapped[Session] = relationship(back_populates="agenda_items")
+    session: Mapped[Session] = relationship(
+        back_populates="agenda_items", foreign_keys="AgendaItem.session_id"
+    )

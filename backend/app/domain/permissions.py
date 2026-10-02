@@ -127,6 +127,9 @@ RULES: dict[str, Callable[[Actor, Resource], bool]] = {
     "session.close.any": lambda a, r: _role_in(a, _STAFF),
     "session.participant.manage": lambda a, r: _manages_session(a, r),
     "agenda.manage": lambda a, r: _manages_session(a, r),
+    # Notes are the room's scratchpad, so anybody in the meeting may add one.
+    "note.create": lambda a, r: (_role_in(a, _TEAM_ROLES) or a.is_guest) and r.session_is_open(),
+    "note.delete.any": lambda a, r: _manages_session(a, r),
     # Ideas
     "idea.create": lambda a, r: _role_in(a, _TEAM_ROLES),
     "idea.create.as_guest": lambda a, r: a.is_guest and r.session_is_open(),

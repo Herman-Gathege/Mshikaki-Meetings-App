@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session as DbSession
 
@@ -13,9 +13,11 @@ from app.domain import minutes as minutes_domain
 from app.domain.permissions import Resource, can
 from app.errors import AppError, PermissionDeniedError
 from app.schemas import (
+    AgendaOutcomeRequest,
     AgendaRequest,
     AttendanceRequest,
     CancelRequest,
+    NoteCreateRequest,
     ParticipantRequest,
     ReopenRequest,
     RunModeStageRequest,
@@ -23,7 +25,7 @@ from app.schemas import (
     SessionUpdateRequest,
 )
 from app.services import activity as activity_service
-from app.services import meetings
+from app.services import meetings, minutes_pdf
 from app.services import summary as summary_service
 
 router = APIRouter(tags=["sessions"])
@@ -214,9 +216,14 @@ def set_run_mode_stage(
     """
     session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
     ensure_lifecycle(context, session, "start")
-    meetings.set_run_mode_stage(
-        db, session=session, stage=payload.stage, actor=context.actor, actor_name=context.name
-    )
+    if payload.stage == "agenda":
+        # Tapping "Agenda" means the meeting itself: land on the first item, or
+        # stay where the room already is if it is mid-agenda.
+        meetings.start_agenda(db, session=session, actor=context.actor, actor_name=context.name)
+    else:
+        meetings.set_run_mode_stage(
+            db, session=session, stage=payload.stage, actor=context.actor, actor_name=context.name
+        )
     return meetings.session_detail(db, session)
 
 
@@ -361,6 +368,117 @@ def remove_agenda_item(
     return {"items": meetings.session_detail(db, session)["agenda"]}
 
 
+# --- the agenda carries the meeting --------------------------------------------
+
+
+@router.post("/sessions/{session_id}/meeting/start")
+def start_the_meeting(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Straight to the agenda. The other opening answer is "let's play"."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "agenda.manage", session_resource(context, session))
+    meetings.start_agenda(db, session=session, actor=context.actor, actor_name=context.name)
+    return meetings.session_detail(db, session)
+
+
+@router.post("/sessions/{session_id}/agenda/next")
+def next_agenda_item(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Finish this item and move the room on, or take everybody to the wrap."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "agenda.manage", session_resource(context, session))
+    meetings.advance_agenda(db, session=session, actor=context.actor, actor_name=context.name)
+    return meetings.session_detail(db, session)
+
+
+@router.post("/sessions/{session_id}/agenda/{item_id}/current")
+def set_current_agenda_item(
+    session_id: uuid.UUID,
+    item_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "agenda.manage", session_resource(context, session))
+    meetings.set_current_agenda(
+        db, session=session, item_id=item_id, actor=context.actor, actor_name=context.name
+    )
+    return meetings.session_detail(db, session)
+
+
+@router.post("/sessions/{session_id}/agenda/{item_id}/outcome")
+def set_agenda_outcome(
+    session_id: uuid.UUID,
+    item_id: uuid.UUID,
+    payload: AgendaOutcomeRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "agenda.manage", session_resource(context, session))
+    meetings.set_agenda_outcome(
+        db,
+        session=session,
+        item_id=item_id,
+        outcome=payload.outcome,
+        actor=context.actor,
+        actor_name=context.name,
+    )
+    return meetings.session_detail(db, session)
+
+
+@router.get("/sessions/{session_id}/notes")
+def list_notes(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    return {"items": meetings.list_notes(db, session=session)}
+
+
+@router.post("/sessions/{session_id}/notes")
+def add_note(
+    session_id: uuid.UUID,
+    payload: NoteCreateRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Anybody in the room can note something. It is a scratchpad, not work."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "note.create", session_resource(context, session))
+    note = meetings.add_note(
+        db,
+        session=session,
+        body=payload.body,
+        agenda_item_id=payload.agenda_item_id,
+        actor=context.actor,
+        actor_name=context.name,
+    )
+    return meetings.note_row(note)
+
+
+@router.delete("/sessions/{session_id}/notes/{note_id}")
+def remove_note(
+    session_id: uuid.UUID,
+    note_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "note.delete.any", session_resource(context, session))
+    meetings.remove_note(
+        db, session=session, note_id=note_id, actor=context.actor, actor_name=context.name
+    )
+    return {"items": meetings.list_notes(db, session=session)}
+
+
 @router.get("/sessions/{session_id}/summary")
 def get_summary(
     session_id: uuid.UUID,
@@ -425,6 +543,29 @@ def download_minutes(
     filename = f"minutes-{session.sequence_no}.html"
     return HTMLResponse(
         content=html,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/sessions/{session_id}/summary.pdf")
+def summary_pdf(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> Response:
+    """The same minutes as the HTML, in a form people print and attach."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "team.view", session_resource(context, session))
+    snapshot = session.summary_snapshot or summary_service.build_snapshot(db, session)
+    content = minutes_pdf.render_minutes_pdf(
+        snapshot,
+        team_name=context.team.name,
+        reference=f"MSHIKAKI-{session.sequence_no}-{str(session.id)[:8]}",
+    )
+    filename = f"minutes-{session.sequence_no}.pdf"
+    return Response(
+        content=content,
+        media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

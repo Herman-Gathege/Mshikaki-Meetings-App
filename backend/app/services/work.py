@@ -167,11 +167,13 @@ def create_idea(
     title: str,
     description: str | None = None,
     session_id: uuid.UUID | None = None,
+    agenda_item_id: uuid.UUID | None = None,
     tags: list[str] | None = None,
 ) -> Idea:
     idea = Idea(
         team_id=team_id,
         session_id=session_id,
+        agenda_item_id=agenda_item_id,
         title=title.strip()[:200],
         description=description,
         created_by=actor.user_id,
@@ -367,6 +369,7 @@ def record_decision(
     statement: str,
     session_id: uuid.UUID | None = None,
     idea_id: uuid.UUID | None = None,
+    agenda_item_id: uuid.UUID | None = None,
     rationale: str | None = None,
     standalone_reason: str | None = None,
 ) -> Decision:
@@ -379,6 +382,7 @@ def record_decision(
         team_id=team_id,
         session_id=session_id,
         idea_id=idea_id,
+        agenda_item_id=agenda_item_id,
         statement=statement.strip(),
         rationale=rationale,
         decided_by=actor.user_id,
@@ -590,6 +594,7 @@ def create_task(
     session_id: uuid.UUID | None = None,
     idea_id: uuid.UUID | None = None,
     decision_id: uuid.UUID | None = None,
+    agenda_item_id: uuid.UUID | None = None,
     collaborator_ids: list[uuid.UUID] | None = None,
 ) -> Task:
     task_rules.ensure_owner(status, owner_id)
@@ -606,6 +611,7 @@ def create_task(
         session_id=session_id,
         idea_id=idea_id,
         decision_id=decision_id,
+        agenda_item_id=agenda_item_id,
         created_by=actor.user_id,
     )
     db.add(task)
@@ -630,6 +636,7 @@ def create_task(
             "owner_name": user_name(db, owner_id) if owner_id else None,
             "idea_id": str(idea_id) if idea_id else None,
             "decision_id": str(decision_id) if decision_id else None,
+            "agenda_item_id": str(agenda_item_id) if agenda_item_id else None,
         },
     )
     return task

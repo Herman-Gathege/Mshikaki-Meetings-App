@@ -136,6 +136,12 @@ CASES: list[tuple[str, Actor, Resource, bool]] = [
     # Games
     ("game.launch", FACILITATOR, PLAIN, True),
     ("game.launch", MEMBER, PLAIN, False),
+    # Notes are the room's scratchpad while the meeting runs.
+    ("note.create", MEMBER, OPEN_SESSION_MINE, True),
+    ("note.create", GUEST, OPEN_SESSION_MINE, True),
+    ("note.create", MEMBER, CLOSED_SESSION, False),
+    ("note.delete.any", FACILITATOR, OPEN_SESSION_MINE, True),
+    ("note.delete.any", MEMBER, OPEN_SESSION_MINE, False),
     # Playing is open to the room while the meeting runs, and only then.
     ("game.answer", MEMBER, OPEN_SESSION_MINE, True),
     ("game.answer", GUEST, OPEN_SESSION_MINE, True),

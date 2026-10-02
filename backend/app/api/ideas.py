@@ -49,6 +49,7 @@ def create_idea(
         title=payload.title,
         description=payload.description,
         session_id=payload.session_id,
+        agenda_item_id=payload.agenda_item_id,
         tags=payload.tags,
     )
     return work.idea_row(db, idea)

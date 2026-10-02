@@ -102,6 +102,7 @@ class IdeaCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     session_id: uuid.UUID | None = None
+    agenda_item_id: uuid.UUID | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -116,6 +117,7 @@ class DecisionCreateRequest(BaseModel):
     statement: str = Field(min_length=3, max_length=2000)
     session_id: uuid.UUID | None = None
     idea_id: uuid.UUID | None = None
+    agenda_item_id: uuid.UUID | None = None
     rationale: str | None = None
     standalone_reason: str | None = None
 
@@ -148,7 +150,21 @@ class TaskCreateRequest(BaseModel):
     session_id: uuid.UUID | None = None
     idea_id: uuid.UUID | None = None
     decision_id: uuid.UUID | None = None
+    agenda_item_id: uuid.UUID | None = None
     collaborator_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class AgendaOutcomeRequest(BaseModel):
+    """What the room did with an agenda item."""
+
+    outcome: str = Field(min_length=2, max_length=16)
+
+
+class NoteCreateRequest(BaseModel):
+    """One line of meeting scratchpad."""
+
+    body: str = Field(min_length=1, max_length=2000)
+    agenda_item_id: uuid.UUID | None = None
 
 
 class TaskUpdateRequest(BaseModel):

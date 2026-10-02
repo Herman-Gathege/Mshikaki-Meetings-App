@@ -9,6 +9,14 @@ from __future__ import annotations
 from html import escape
 from typing import Any
 
+# The one-word outcome of an agenda item, said the way a person would.
+OUTCOME_WORDS: dict[str, str] = {
+    "accomplished": "done with this",
+    "pending": "still pending",
+    "assigned": "someone is taking this",
+    "none": "nothing decided",
+}
+
 
 def _text(value: Any, fallback: str = "—") -> str:
     if value in (None, "", []):
@@ -51,6 +59,7 @@ def render_minutes_html(
     raised = blockers.get("raised") or []
     resolved = blockers.get("resolved") or []
     agenda = snapshot.get("agenda") or []
+    notes = snapshot.get("notes") or []
     generated = snapshot.get("generated_at")
 
     parts: list[str] = []
@@ -77,7 +86,16 @@ def render_minutes_html(
     )
 
     parts.append("<h3>2. Agenda</h3>")
-    parts.append(_list([item.get("title") for item in agenda], "No agenda was recorded"))
+    if agenda:
+        parts.append("<ol>")
+        for item in agenda:
+            outcome = item.get("outcome")
+            label = OUTCOME_WORDS.get(str(outcome)) if outcome else None
+            marker = f" <span class='muted'>({escape(label)})</span>" if label else ""
+            parts.append(f"<li>{_text(item.get('title'), 'Item')}{marker}</li>")
+        parts.append("</ol>")
+    else:
+        parts.append("<p class='muted'>No agenda was recorded</p>")
 
     parts.append("<h3>3. Opening and play</h3>")
     parts.append(
@@ -99,8 +117,16 @@ def render_minutes_html(
     parts.append("<h3>4. Ideas raised</h3>")
     parts.append(
         _table(
-            ["Idea", "Raised by", "Status"],
-            [[idea.get("title"), idea.get("author"), idea.get("status")] for idea in ideas],
+            ["Idea", "Raised by", "Status", "Under"],
+            [
+                [
+                    idea.get("title"),
+                    idea.get("author"),
+                    idea.get("status"),
+                    idea.get("agenda_title") or "the meeting",
+                ]
+                for idea in ideas
+            ],
         )
     )
 
@@ -122,23 +148,35 @@ def render_minutes_html(
     else:
         parts.append("<p class='muted'>None recorded</p>")
 
-    parts.append("<h3>6. Action items</h3>")
+    parts.append("<h3>6. Notes</h3>")
+    if notes:
+        parts.append("<ul>")
+        for note in notes:
+            under = note.get("agenda_title")
+            suffix = f" <span class='muted'>({escape(str(under))})</span>" if under else ""
+            parts.append(f"<li>{escape(str(note.get('body') or ''))}{suffix}</li>")
+        parts.append("</ul>")
+    else:
+        parts.append("<p class='muted'>No notes were kept.</p>")
+
+    parts.append("<h3>7. Action items</h3>")
     parts.append(
         _table(
-            ["Action", "Owner", "Due", "Status"],
+            ["Action", "Owner", "Due", "Status", "From"],
             [
                 [
                     task.get("title"),
                     task.get("owner") or "Unassigned",
                     task.get("due_date"),
                     task.get("status"),
+                    task.get("agenda_title") or "the meeting",
                 ]
                 for task in tasks
             ],
         )
     )
 
-    parts.append("<h3>7. Blockers</h3>")
+    parts.append("<h3>8. Blockers</h3>")
     if raised:
         parts.append("<p><strong>Raised during the meeting</strong></p>")
         parts.append(
@@ -161,22 +199,24 @@ def render_minutes_html(
     if not raised and not resolved:
         parts.append("<p class='muted'>Nothing was blocked.</p>")
 
-    parts.append("<h3>8. Closing summary</h3>")
+    parts.append("<h3>9. Closing summary</h3>")
     parts.append(
         _table(
             ["Item", "Count"],
             [
+                ["Agenda items", counts.get("agenda_items", 0)],
                 ["Ideas raised", counts.get("ideas", 0)],
                 ["Decisions made", counts.get("decisions", 0)],
                 ["Actions created", counts.get("tasks_created", 0)],
                 ["Actions completed", counts.get("tasks_completed", 0)],
+                ["Notes kept", counts.get("notes", 0)],
                 ["Games played", counts.get("games", 0)],
                 ["Participants", counts.get("participants", 0)],
             ],
         )
     )
 
-    parts.append("<h3>9. Record information</h3>")
+    parts.append("<h3>10. Record information</h3>")
     parts.append(
         "<p class='muted'>"
         f"Mshikaki session reference {escape(reference)}. "

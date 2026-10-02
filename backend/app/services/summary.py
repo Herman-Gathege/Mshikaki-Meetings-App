@@ -7,6 +7,7 @@ the activity trail keeps both facts.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from app.db.models import (
     GameScore,
     Guest,
     Idea,
+    Note,
     Task,
     User,
     XpEvent,
@@ -114,6 +116,21 @@ def _task_rows(db: DbSession, tasks: list[Task]) -> list[dict]:
 def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
     participants = _people(db, session)
 
+    # The agenda is the spine of the summary: everything else hangs off it.
+    agenda_items = list(session.agenda_items)
+    agenda_titles = {item.id: item.title for item in agenda_items}
+    agenda_rows = [
+        {
+            "id": str(item.id),
+            "position": item.position,
+            "title": item.title,
+            "covered": item.covered_at is not None,
+            "outcome": item.outcome,
+            "timebox_minutes": item.timebox_minutes,
+        }
+        for item in agenda_items
+    ]
+
     ideas = list(
         db.execute(
             select(Idea)
@@ -128,6 +145,8 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
             "author": idea.author_name,
             "status": idea.status,
             "description": idea.description,
+            "agenda_item_id": str(idea.agenda_item_id) if idea.agenda_item_id else None,
+            "agenda_title": agenda_titles.get(idea.agenda_item_id),
         }
         for idea in ideas
     ]
@@ -145,6 +164,8 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
             "statement": decision.statement,
             "recorded_by": decision.decided_by_name,
             "rationale": decision.rationale,
+            "agenda_item_id": str(decision.agenda_item_id) if decision.agenda_item_id else None,
+            "agenda_title": agenda_titles.get(decision.agenda_item_id),
         }
         for decision in decisions
     ]
@@ -156,6 +177,34 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
         db,
         [t for t in tasks if t.completed_at is None and t.status == TaskStatus.IN_PROGRESS.value],
     )
+    for row, task in zip(created, tasks, strict=False):
+        row["agenda_item_id"] = str(task.agenda_item_id) if task.agenda_item_id else None
+        row["agenda_title"] = agenda_titles.get(task.agenda_item_id)
+
+    # Read notes here rather than through the meetings service: that module
+    # imports this one to store snapshots, and a cycle would be a trap.
+    note_rows = (
+        db.execute(
+            select(Note)
+            .where(Note.session_id == session.id, Note.deleted_at.is_(None))
+            .order_by(Note.created_at)
+        )
+        .scalars()
+        .all()
+    )
+    notes = [
+        {
+            "id": str(note.id),
+            "body": note.body,
+            "author": note.author_name,
+            "agenda_item_id": str(note.agenda_item_id) if note.agenda_item_id else None,
+            "created_at": note.created_at.isoformat() if note.created_at else None,
+        }
+        for note in note_rows
+    ]
+    for note in notes:
+        item_id = uuid.UUID(note["agenda_item_id"]) if note.get("agenda_item_id") else None
+        note["agenda_title"] = agenda_titles.get(item_id)
 
     blockers = list(
         db.execute(
@@ -210,10 +259,8 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
         blockers_raised=raised,
         blockers_resolved=resolved,
         xp_awards=awards,
-        agenda=[
-            {"title": item.title, "covered": item.covered_at is not None}
-            for item in session.agenda_items
-        ],
+        agenda=agenda_rows,
+        notes=notes,
         generated_at=datetime.now(timezone.utc),
     )
 

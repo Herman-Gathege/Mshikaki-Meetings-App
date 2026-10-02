@@ -17,6 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   useAgenda,
   useContentPacks,
+  useDecisions,
   useCreateTask,
   useDeleteNote,
   useGames,
@@ -514,6 +515,7 @@ function AgendaStep({
   const participants = useSessionParticipants(session.id);
   const ideas = useIdeas({ session_id: session.id });
   const tasks = useTasks({ session_id: session.id });
+  const decisions = useDecisions({ session_id: session.id });
 
   const [panel, setPanel] = useState<"note" | "decide" | "action" | null>("note");
   const [note, setNote] = useState("");
@@ -563,6 +565,9 @@ function AgendaStep({
   const itemIdeas = (ideas.data?.items ?? []).filter((idea) => idea.agenda_item_id === item.id);
   const itemActions = (tasks.data?.items ?? []).filter(
     (task) => task.agenda_item_id === item.id,
+  );
+  const itemDecisions = (decisions.data?.items ?? []).filter(
+    (decision) => decision.agenda_item_id === item.id,
   );
   const people = (participants.data?.items ?? []).filter((person) => person.user_id);
   const progress = position.total > 0 ? (position.position / position.total) * 100 : 0;
@@ -763,7 +768,10 @@ function AgendaStep({
           </div>
         ) : null}
 
-        {itemNotes.length > 0 || itemIdeas.length > 0 || itemActions.length > 0 ? (
+        {itemNotes.length > 0 ||
+        itemIdeas.length > 0 ||
+        itemActions.length > 0 ||
+        itemDecisions.length > 0 ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div>
               <h3 className="text-sm font-semibold text-white/60">Notes on this item</h3>
@@ -795,12 +803,19 @@ function AgendaStep({
                     💡 {idea.title}
                   </li>
                 ))}
+                {itemDecisions.map((decision) => (
+                  <li key={decision.id} className="rounded-xl bg-emerald-400/10 p-3">
+                    🧠 {decision.statement}
+                  </li>
+                ))}
                 {itemActions.map((task) => (
                   <li key={task.id} className="rounded-xl bg-white/5 p-3">
                     🎯 {task.title} · {task.owner?.name ?? "unassigned"}
                   </li>
                 ))}
-                {itemIdeas.length === 0 && itemActions.length === 0 ? (
+                {itemIdeas.length === 0 &&
+                itemActions.length === 0 &&
+                itemDecisions.length === 0 ? (
                   <li className="text-sm text-white/50">Nothing came out of this item yet.</li>
                 ) : null}
               </ul>

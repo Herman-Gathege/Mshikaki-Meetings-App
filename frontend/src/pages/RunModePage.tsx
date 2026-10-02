@@ -278,7 +278,13 @@ export function RunModePage() {
                 size="lg"
                 onClick={() => (next ? goToStage(next) : goToStage("close"))}
               >
-                {next ? `Next: ${STEPS.find((item) => item.key === next)?.label}` : "Finish"}
+                {/* On the agenda the room moves item by item, so the footer must
+                    not look like it advances one item. It skips to the wrap. */}
+                {stage === "agenda"
+                  ? "Skip to the wrap"
+                  : next
+                    ? `Next: ${STEPS.find((item) => item.key === next)?.label}`
+                    : "Finish"}
               </Button>
             </div>
           </div>

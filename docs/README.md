@@ -28,6 +28,7 @@ concrete, opinionated thing to disagree with.
 | 16 | [UX audit](16-ux-audit.md) | Where the app made people think, and what changed |
 | 17 | [UX and rehearsal](17-ux.md) | Voice, visual language, Run Mode, the question lifecycle and the rehearsal checklist |
 | 18 | [UX verification](18-ux-verification.md) | The measured accessibility and bad-connection evidence, and how to re-run it |
+| 19 | [Agenda-led meetings](19-agenda-meetings.md) | The agenda as the meeting backbone, notes, outcomes and the PDF minutes |
 
 If you only want to plan, read **[13-plan-brief.md](13-plan-brief.md)** on its own.
 It restates everything a plan needs and points back to the detail documents.

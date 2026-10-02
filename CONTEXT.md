@@ -10,7 +10,20 @@ plus `cancelled`. Only one session per team may be `active`.
 Not to be confused with **auth session** (a login).
 
 **Run Mode** - the guided, screen-first view a facilitator drives during a
-meeting: Play -> Capture -> Decide -> Assign -> Close. One action per step.
+meeting. It opens with a choice (Let's play, or Start meeting) and then walks the
+**agenda**: the facilitator moves the room from one item to the next, and
+everybody follows. `capture`, `decide` and `assign` are the older per-topic
+screens; they still render so a meeting sitting on one is never stranded, but the
+agenda carries the work now.
+
+**Agenda item** - one topic in the numbered list for a meeting. The session
+remembers which one is current (`current_agenda_item_id`), and each item records
+how it ended: `accomplished`, `pending`, `assigned`, or `none` (nothing decided).
+
+**Note** - one line of meeting scratchpad, worth keeping but not an idea, a
+decision or a task ("finance will confirm tomorrow"). Belongs to the meeting and,
+when the room is on one, to the agenda item under discussion. Anybody in the room
+may add one.
 
 **Idea** - something someone proposes. `new -> discussing -> accepted | parked |
 rejected`, then `converted` when it becomes work. Ideas do not have to become work.

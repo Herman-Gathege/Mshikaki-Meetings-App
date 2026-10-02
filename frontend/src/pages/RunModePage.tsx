@@ -135,9 +135,14 @@ export function RunModePage() {
     );
   }
 
-  const index = STEPS.findIndex((entry) => entry.key === stage);
-  const previous = index > 0 ? STEPS[index - 1]?.key : undefined;
-  const next = index + 1 < STEPS.length ? STEPS[index + 1]?.key : undefined;
+  // The walk the facilitator is actually on. A meeting parked on one of the
+  // older topic screens still sees the whole list so it can get back out.
+  const walk: readonly Step[] = MAIN_PATH.includes(stage)
+    ? MAIN_PATH
+    : STEPS.map((entry) => entry.key);
+  const index = walk.indexOf(stage);
+  const previous = index > 0 ? walk[index - 1] : undefined;
+  const next = index >= 0 && index + 1 < walk.length ? walk[index + 1] : undefined;
 
   const goToStage = (target: Step) => {
     setDraftStage(target);
@@ -183,7 +188,7 @@ export function RunModePage() {
       )}
 
       <nav className="mx-auto flex max-w-5xl gap-2 px-5 py-4">
-        {(MAIN_PATH.includes(stage) ? MAIN_PATH : STEPS.map((entry) => entry.key)).map((key) => {
+        {walk.map((key) => {
           const entry = STEPS.find((item) => item.key === key);
           if (!entry) return null;
           const position = STEPS.findIndex((item) => item.key === key);
@@ -272,7 +277,7 @@ export function RunModePage() {
                 size="lg"
                 onClick={() => (next ? goToStage(next) : goToStage("close"))}
               >
-                {next ? `Next: ${STEPS[index + 1]?.label}` : "Finish"}
+                {next ? `Next: ${STEPS.find((item) => item.key === next)?.label}` : "Finish"}
               </Button>
             </div>
           </div>

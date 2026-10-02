@@ -17,10 +17,13 @@ export function CaptureSheet({
   open,
   onClose,
   defaultSessionId,
+  agendaItemId,
 }: {
   open: boolean;
   onClose: () => void;
   defaultSessionId?: string;
+  /** When the room is on an agenda item, the idea belongs to it by default. */
+  agendaItemId?: string | null;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -34,6 +37,7 @@ export function CaptureSheet({
       title: title.trim(),
       description: description.trim() || undefined,
       session_id: sessionId || undefined,
+      agenda_item_id: agendaItemId || undefined,
     });
     setTitle("");
     setDescription("");

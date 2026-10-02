@@ -42,6 +42,7 @@ import type {
   Task,
   TaskDetail,
   TeamInfo,
+  Note,
   Today,
 } from "@/api/types";
 
@@ -263,6 +264,55 @@ export function useSessionLifecycle(sessionId: string) {
   };
 }
 
+/** The agenda carries the meeting: the facilitator moves it, the room follows. */
+export function useAgenda(sessionId: string) {
+  const invalidate = useInvalidate();
+  const action = (suffix: string, body?: unknown) =>
+    apiFetch<SessionDetail>(`/sessions/${sessionId}/${suffix}`, {
+      method: "POST",
+      ...(body === undefined ? {} : { json: body }),
+    });
+
+  return {
+    /** The other answer to the opening choice: straight to the agenda. */
+    startMeeting: useMutation({
+      mutationFn: () => action("meeting/start"),
+      onSuccess: () => invalidate(["sessions", "today", "activity"]),
+    }),
+    next: useMutation({
+      mutationFn: () => action("agenda/next"),
+      onSuccess: () => invalidate(["sessions", "today", "activity"]),
+    }),
+    jumpTo: useMutation({
+      mutationFn: (itemId: string) => action(`agenda/${itemId}/current`),
+      onSuccess: () => invalidate(["sessions"]),
+    }),
+    outcome: useMutation({
+      mutationFn: (payload: { itemId: string; outcome: string }) =>
+        action(`agenda/${payload.itemId}/outcome`, { outcome: payload.outcome }),
+      onSuccess: () => invalidate(["sessions", "activity"]),
+    }),
+  };
+}
+
+export function useSessionNotes(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payload: { body: string; agenda_item_id?: string | null }) =>
+      apiFetch<Note>(`/sessions/${sessionId}/notes`, { method: "POST", json: payload }),
+    onSuccess: () => invalidate(["sessions", "activity"]),
+  });
+}
+
+export function useDeleteNote(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (noteId: string) =>
+      apiFetch<{ items: Note[] }>(`/sessions/${sessionId}/notes/${noteId}`, { method: "DELETE" }),
+    onSuccess: () => invalidate(["sessions", "activity"]),
+  });
+}
+
 export function useSessionParticipants(sessionId: string) {
   return useQuery({
     queryKey: ["participants", sessionId],
@@ -366,8 +416,13 @@ export function useIdea(ideaId: string | undefined) {
 export function useCreateIdea() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (payload: { title: string; description?: string; session_id?: string; tags?: string[] }) =>
-      apiFetch<Idea>("/ideas", { method: "POST", json: payload }),
+    mutationFn: (payload: {
+      title: string;
+      description?: string;
+      session_id?: string;
+      agenda_item_id?: string;
+      tags?: string[];
+    }) => apiFetch<Idea>("/ideas", { method: "POST", json: payload }),
     onSuccess: () => invalidate(["ideas", "sessions", "today", "activity"]),
   });
 }
@@ -414,6 +469,7 @@ export function useRecordDecision() {
       statement: string;
       session_id?: string;
       idea_id?: string;
+      agenda_item_id?: string;
       rationale?: string;
       standalone_reason?: string;
     }) => apiFetch<Decision>("/decisions", { method: "POST", json: payload }),
@@ -488,6 +544,7 @@ export function useCreateTask() {
       session_id?: string | null;
       idea_id?: string | null;
       decision_id?: string | null;
+      agenda_item_id?: string | null;
       collaborator_ids?: string[];
     }) => apiFetch<Task>("/tasks", { method: "POST", json: payload }),
     onSuccess: () => invalidate(["tasks", "sessions", "today", "metrics", "activity"]),

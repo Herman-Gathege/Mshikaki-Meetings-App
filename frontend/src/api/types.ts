@@ -18,7 +18,10 @@ export type IdeaStatus =
 export type TaskStatus = "backlog" | "in_progress" | "blocked" | "done" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 export type GameFamily = "prompt_deck" | "host_quiz" | "host_scored";
-export type RunModeStage = "play" | "capture" | "decide" | "assign" | "close";
+export type RunModeStage = "play" | "agenda" | "capture" | "decide" | "assign" | "close";
+
+/** How an agenda item ended, in one word. */
+export type AgendaOutcome = "accomplished" | "pending" | "assigned" | "none";
 
 export interface Me {
   user: {
@@ -86,6 +89,24 @@ export interface AgendaItem {
   title: string;
   covered: boolean;
   timebox_minutes: number | null;
+  outcome: AgendaOutcome | null;
+  is_current: boolean;
+}
+
+export interface AgendaPosition {
+  position: number;
+  total: number;
+  remaining: number;
+  is_last: boolean;
+}
+
+export interface Note {
+  id: string;
+  body: string;
+  author: string;
+  agenda_item_id: string | null;
+  agenda_title?: string | null;
+  created_at: string | null;
 }
 
 export interface SessionListItem {
@@ -111,6 +132,10 @@ export interface SessionDetail extends Omit<SessionListItem, "facilitator"> {
   run_mode_active: boolean;
   run_mode_updated_at: string | null;
   agenda: AgendaItem[];
+  /** Where the room is in the agenda, counted the way a person says it. */
+  agenda_position: AgendaPosition;
+  current_agenda_item_id: string | null;
+  notes: Note[];
   ideas: { id: string; title: string; status: IdeaStatus; author: string }[];
   decisions: { id: string; statement: string; recorded_by: string }[];
   games: { id: string; key: string; status: string }[];
@@ -132,6 +157,8 @@ export interface Idea {
   status: IdeaStatus;
   author: { id: string | null; name: string };
   session_id: string | null;
+  /** The agenda item this idea was raised under, when there was one. */
+  agenda_item_id: string | null;
   tags: string[];
   converted_to: { type: string; id: string } | null;
   created_at: string;
@@ -148,6 +175,7 @@ export interface Decision {
   rationale: string | null;
   recorded_by: string;
   session_id: string | null;
+  agenda_item_id?: string | null;
   idea_id: string | null;
   decided_at: string | null;
   superseded_by_id: string | null;
@@ -182,7 +210,12 @@ export interface Task {
   due_date: string | null;
   completed_at: string | null;
   project_id: string | null;
-  origin: { session_id: string | null; idea_id: string | null; decision_id: string | null };
+  origin: {
+    session_id: string | null;
+    idea_id: string | null;
+    decision_id: string | null;
+  };
+  agenda_item_id: string | null;
   collaborators: { id: string; name: string }[];
   open_blockers: { id: string; reason: string; raised_by: string; raised_at: string | null }[];
   created_at: string;

@@ -226,7 +226,24 @@ function AgendaTab({ sessionId }: { sessionId: string }) {
       <ul className="space-y-2">
         {(session.data?.agenda ?? []).map((item) => (
           <Card as="li" key={item.id} className="flex items-center justify-between gap-3">
-            <span className={item.covered ? "text-ink-600 line-through" : ""}>{item.title}</span>
+            <span className="min-w-0">
+              {item.is_current ? (
+                <span className="mr-2 rounded-full bg-ember-500/15 px-2 py-0.5 text-xs font-medium text-ember-700">
+                  discussing now
+                </span>
+              ) : null}
+              <span className={item.covered ? "text-ink-600 line-through" : ""}>{item.title}</span>
+              {item.outcome ? (
+                <span className="ml-2 text-xs text-ink-600">
+                  {{
+                    accomplished: "done with this",
+                    pending: "still pending",
+                    assigned: "someone is taking this",
+                    none: "nothing decided",
+                  }[item.outcome] ?? item.outcome}
+                </span>
+              ) : null}
+            </span>
             {!item.covered ? (
               <Button
                 variant="outline"
@@ -340,6 +357,13 @@ function SummaryTab({ sessionId, hasSummary }: { sessionId: string; hasSummary: 
           variant="secondary"
         >
           📄 Download minutes
+        </ButtonLink>
+        <ButtonLink
+          href={`/api/sessions/${sessionId}/summary.pdf`}
+          download
+          variant="secondary"
+        >
+          🖨️ Download PDF
         </ButtonLink>
         <ButtonLink
           href={`/api/sessions/${sessionId}/export.txt`}

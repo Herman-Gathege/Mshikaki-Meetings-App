@@ -15,14 +15,17 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
+  useAgenda,
   useContentPacks,
   useCreateTask,
+  useDeleteNote,
   useGames,
   useIdeas,
   useMe,
   useRecordDecision,
   useSession,
   useSessionLifecycle,
+  useSessionNotes,
   useSessionParticipants,
   useStartPlay,
   useTasks,
@@ -40,6 +43,7 @@ import { formatDateTime } from "@/lib/dates";
 // The journey is stated in the words a facilitator would use out loud.
 const STEPS = [
   { key: "play", label: "🎲 Let's play" },
+  { key: "agenda", label: "📋 The agenda" },
   { key: "capture", label: "💡 What are we thinking" },
   { key: "decide", label: "🧠 What did we decide" },
   { key: "assign", label: "🎯 Who's got this" },
@@ -48,6 +52,11 @@ const STEPS = [
 type Step = (typeof STEPS)[number]["key"];
 
 const STAGE_KEYS = STEPS.map((entry) => entry.key) as readonly Step[];
+
+// The agenda carries the meeting now. The three older topic screens stay
+// reachable so a meeting already sitting on one is never stranded, but they are
+// not part of the walk a facilitator is asked to take.
+const MAIN_PATH: readonly Step[] = ["play", "agenda", "close"];
 
 function isStage(value: string | null | undefined): value is Step {
   return Boolean(value) && STAGE_KEYS.includes(value as Step);
@@ -174,7 +183,10 @@ export function RunModePage() {
       )}
 
       <nav className="mx-auto flex max-w-5xl gap-2 px-5 py-4">
-        {STEPS.map((entry, position) => {
+        {(MAIN_PATH.includes(stage) ? MAIN_PATH : STEPS.map((entry) => entry.key)).map((key) => {
+          const entry = STEPS.find((item) => item.key === key);
+          if (!entry) return null;
+          const position = STEPS.findIndex((item) => item.key === key);
           const current = position === index;
           const shared = { key: entry.key, className: "" };
           const classes =
@@ -208,6 +220,13 @@ export function RunModePage() {
 
       <main className="mx-auto max-w-5xl px-5">
         {stage === "play" ? <PlayStep session={data} canDrive={canDrive} /> : null}
+        {stage === "agenda" ? (
+          <AgendaStep
+            session={data}
+            canDrive={canDrive}
+            onOpenCapture={() => setCaptureOpen(true)}
+          />
+        ) : null}
         {stage === "capture" ? (
           <CaptureStep
             sessionId={data.id}
@@ -264,6 +283,8 @@ export function RunModePage() {
         open={captureOpen}
         onClose={() => setCaptureOpen(false)}
         defaultSessionId={data.id}
+        // An idea raised while the room is on an item belongs to that item.
+        agendaItemId={stage === "agenda" ? data.current_agenda_item_id : undefined}
       />
     </div>
   );
@@ -273,6 +294,7 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
   const games = useGames();
   const packs = useContentPacks();
   const startPlay = useStartPlay(session.id);
+  const agenda = useAgenda(session.id);
   const navigate = useNavigate();
   const [gameKey, setGameKey] = useState("");
   const [packId, setPackId] = useState("");
@@ -336,10 +358,42 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
 
   return (
     <Card className="bg-white/5 text-white">
-      <h2 className="text-3xl font-semibold">🎲 Let's play</h2>
+      <h2 className="text-3xl font-semibold">Ready to begin?</h2>
       <p className="mt-2 max-w-2xl text-white/70">
-        Pick something short and get people laughing. The games are not work-related on purpose.
+        Play is the warm-up, not the meeting. Serious meetings can go straight to the agenda.
       </p>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-ember-500/40 bg-ember-500/10 p-4">
+          <p className="text-lg font-semibold">🎲 Let's play</p>
+          <p className="mt-1 text-sm text-white/70">Warm the room up first.</p>
+          <Button
+            size="lg"
+            className="mt-3 w-full"
+            disabled={startPlay.isPending || !quickGames.length}
+            onClick={() => void start()}
+          >
+            {startPlay.isPending ? "Starting..." : "Start the game"}
+          </Button>
+        </div>
+        <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+          <p className="text-lg font-semibold">▶️ Start meeting</p>
+          <p className="mt-1 text-sm text-white/70">Go straight to the agenda.</p>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="mt-3 w-full"
+            disabled={agenda.startMeeting.isPending}
+            onClick={() =>
+              void agenda.startMeeting.mutateAsync().then(() => toast("📋 Meeting started"))
+            }
+          >
+            {agenda.startMeeting.isPending ? "Starting..." : "Start meeting"}
+          </Button>
+        </div>
+      </div>
+
+      <h3 className="mt-8 text-lg font-semibold text-white/80">Or pick the game yourself</h3>
 
       {running ? (
         <div className="mt-4 rounded-xl border border-ember-500/40 bg-ember-500/10 p-3">
@@ -389,10 +443,11 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
           <Button
             size="xl"
             className="w-full"
+            variant="secondary"
             onClick={() => void start()}
             disabled={!chosen || (needsPack && !packId) || startPlay.isPending}
           >
-            {startPlay.isPending ? "Starting..." : "Start the game"}
+            {startPlay.isPending ? "Starting..." : "Start this game"}
           </Button>
         </div>
       </div>
@@ -414,6 +469,364 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
         The host runs the game on this screen. Nobody needs to install anything.
       </p>
     </Card>
+  );
+}
+
+/** How an item ended, said the way a facilitator would say it out loud. */
+const OUTCOME_CHOICES = [
+  { key: "accomplished", label: "Done with this" },
+  { key: "pending", label: "Still pending" },
+  { key: "assigned", label: "Someone is taking this" },
+  { key: "none", label: "Nothing decided" },
+] as const;
+
+const OUTCOME_WORDS: Record<string, string> = Object.fromEntries(
+  OUTCOME_CHOICES.map((choice) => [choice.key, choice.label]),
+);
+
+/**
+ * The agenda step: one item, and everything the room can do with it.
+
+ * This is where a serious meeting lives. The facilitator sets the outcome, can
+ * record a decision, can hand one action to one person, and moves on. Everybody
+ * else sees the same item and can note or propose something without leaving the
+ * meeting. Deliberately not a dashboard: one item, four quiet choices.
+ */
+function AgendaStep({
+  session,
+  canDrive,
+  onOpenCapture,
+}: {
+  session: SessionDetail;
+  canDrive: boolean;
+  onOpenCapture: () => void;
+}) {
+  const agenda = useAgenda(session.id);
+  const addNote = useSessionNotes(session.id);
+  const deleteNote = useDeleteNote(session.id);
+  const record = useRecordDecision();
+  const createTask = useCreateTask();
+  const participants = useSessionParticipants(session.id);
+  const ideas = useIdeas({ session_id: session.id });
+  const tasks = useTasks({ session_id: session.id });
+
+  const [panel, setPanel] = useState<"note" | "decide" | "action" | null>("note");
+  const [note, setNote] = useState("");
+  const [statement, setStatement] = useState("");
+  const [action, setAction] = useState("");
+  const [ownerId, setOwnerId] = useState("");
+
+  const item = session.agenda.find((row) => row.is_current) ?? null;
+  const position = session.agenda_position;
+
+  if (!item) {
+    return (
+      <Card className="bg-white/5 text-white">
+        <h2 className="text-3xl font-semibold">📋 The agenda</h2>
+        {session.agenda.length === 0 ? (
+          <p className="mt-3 text-xl text-white/80">
+            {canDrive
+              ? "This meeting has no agenda items yet. Add them on the session page, then come back."
+              : "The facilitator has not set an agenda for this meeting."}
+          </p>
+        ) : (
+          <p className="mt-3 text-xl text-white/80">
+            The agenda is finished. {canDrive ? "Wrap the meeting up when you are ready." : "The facilitator will wrap up."}
+          </p>
+        )}
+        {canDrive ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            <ButtonLink to={`/sessions/${session.id}`} size="lg">
+              Edit the agenda
+            </ButtonLink>
+            {session.agenda.length > 0 ? (
+              <Button
+                size="lg"
+                disabled={agenda.next.isPending}
+                onClick={() => void agenda.next.mutateAsync()}
+              >
+                That&apos;s a wrap
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </Card>
+    );
+  }
+
+  const itemNotes = session.notes.filter((row) => row.agenda_item_id === item.id);
+  const itemIdeas = (ideas.data?.items ?? []).filter((idea) => idea.agenda_item_id === item.id);
+  const itemActions = (tasks.data?.items ?? []).filter(
+    (task) => task.agenda_item_id === item.id,
+  );
+  const people = (participants.data?.items ?? []).filter((person) => person.user_id);
+  const progress = position.total > 0 ? (position.position / position.total) * 100 : 0;
+
+  return (
+    <>
+      <Card className="bg-white/5 text-white">
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-xs tracking-widest text-white/50 uppercase">
+            Agenda {position.position} of {position.total}
+          </p>
+          <p className="text-sm text-white/50">
+            {position.remaining === 0 ? "last item" : `${position.remaining} to go`}
+          </p>
+        </div>
+        <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
+          <div className="h-1.5 rounded-full bg-ember-500" style={{ width: `${progress}%` }} />
+        </div>
+
+        <h2 className="mt-5 text-3xl leading-tight font-semibold sm:text-4xl">{item.title}</h2>
+        <p className="mt-2 text-lg text-white/70">
+          {canDrive
+            ? "What are we doing with this item?"
+            : "The facilitator is leading this item. Add a note or an idea whenever it helps."}
+        </p>
+
+        {canDrive ? (
+          <div className="mt-5">
+            <p className="text-sm text-white/60">How does this item end?</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {OUTCOME_CHOICES.map((choice) => (
+                <Button
+                  key={choice.key}
+                  variant={item.outcome === choice.key ? "primary" : "ghost"}
+                  className={item.outcome === choice.key ? "" : "text-white hover:bg-white/10"}
+                  disabled={agenda.outcome.isPending}
+                  onClick={() =>
+                    void agenda.outcome
+                      .mutateAsync({ itemId: item.id, outcome: choice.key })
+                      .then(() => toast(`📋 ${choice.label}`))
+                  }
+                >
+                  {choice.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : item.outcome ? (
+          <p className="mt-4 text-white/70">This item ended as: {OUTCOME_WORDS[item.outcome]}</p>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            variant={panel === "note" ? "primary" : "ghost"}
+            className={panel === "note" ? "" : "text-white hover:bg-white/10"}
+            onClick={() => setPanel(panel === "note" ? null : "note")}
+          >
+            📝 Add a note
+          </Button>
+          {canDrive ? (
+            <Button
+              variant={panel === "decide" ? "primary" : "ghost"}
+              className={panel === "decide" ? "" : "text-white hover:bg-white/10"}
+              onClick={() => setPanel(panel === "decide" ? null : "decide")}
+            >
+              🧠 Record a decision
+            </Button>
+          ) : null}
+          {canDrive ? (
+            <Button
+              variant={panel === "action" ? "primary" : "ghost"}
+              className={panel === "action" ? "" : "text-white hover:bg-white/10"}
+              onClick={() => setPanel(panel === "action" ? null : "action")}
+            >
+              🎯 Give someone an action
+            </Button>
+          ) : null}
+          <Button variant="ghost" className="text-white hover:bg-white/10" onClick={onOpenCapture}>
+            💡 Add an idea
+          </Button>
+        </div>
+
+        {panel === "note" ? (
+          <div className="mt-4 rounded-xl bg-white/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                className="bg-white text-ink-900"
+                value={note}
+                placeholder="Finance will confirm the figure tomorrow"
+                onChange={(event) => setNote(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && note.trim()) {
+                    void addNote
+                      .mutateAsync({ body: note.trim(), agenda_item_id: item.id })
+                      .then(() => setNote(""));
+                  }
+                }}
+              />
+              <Button
+                size="lg"
+                disabled={!note.trim() || addNote.isPending}
+                onClick={() =>
+                  void addNote
+                    .mutateAsync({ body: note.trim(), agenda_item_id: item.id })
+                    .then(() => setNote(""))
+                }
+              >
+                {addNote.isPending ? "Saving..." : "Note it"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {panel === "decide" && canDrive ? (
+          <div className="mt-4 rounded-xl bg-white/5 p-4">
+            <Field label="The decision" hint="One sentence. The room hears what was agreed.">
+              <Input
+                className="bg-white text-ink-900"
+                value={statement}
+                placeholder="Proceed with the website launch plan"
+                onChange={(event) => setStatement(event.target.value)}
+              />
+            </Field>
+            <Button
+              size="lg"
+              className="mt-3"
+              disabled={!statement.trim() || record.isPending}
+              onClick={() =>
+                void record
+                  .mutateAsync({
+                    statement: statement.trim(),
+                    session_id: session.id,
+                    agenda_item_id: item.id,
+                  })
+                  .then(() => {
+                    setStatement("");
+                    toast("🧠 Decision recorded");
+                  })
+              }
+            >
+              {record.isPending ? "Saving..." : "Record it"}
+            </Button>
+          </div>
+        ) : null}
+
+        {panel === "action" && canDrive ? (
+          <div className="mt-4 rounded-xl bg-white/5 p-4">
+            <p className="text-sm text-white/60">
+              Only if it needs doing. One owner, one action. No action is a fine outcome.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <Field label="What needs to happen?">
+                  <Input
+                    className="bg-white text-ink-900"
+                    value={action}
+                    placeholder="Prepare the final launch checklist"
+                    onChange={(event) => setAction(event.target.value)}
+                  />
+                </Field>
+              </div>
+              <Field label="Who?">
+                <Select
+                  className="bg-white text-ink-900"
+                  value={ownerId}
+                  onChange={(event) => setOwnerId(event.target.value)}
+                >
+                  <option value="">Pick a person</option>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.user_id ?? ""}>
+                      {person.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <Button
+              size="lg"
+              className="mt-3"
+              disabled={!action.trim() || !ownerId || createTask.isPending}
+              onClick={() =>
+                void createTask
+                  .mutateAsync({
+                    title: action.trim(),
+                    owner_id: ownerId,
+                    status: "in_progress",
+                    session_id: session.id,
+                    agenda_item_id: item.id,
+                  })
+                  .then(() => {
+                    setAction("");
+                    toast("🎯 Action assigned");
+                  })
+              }
+            >
+              {createTask.isPending ? "Assigning..." : "Assign it"}
+            </Button>
+          </div>
+        ) : null}
+
+        {itemNotes.length > 0 || itemIdeas.length > 0 || itemActions.length > 0 ? (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-semibold text-white/60">Notes on this item</h3>
+              <ul className="mt-2 space-y-2">
+                {itemNotes.map((row) => (
+                  <li key={row.id} className="flex items-start justify-between gap-3 rounded-xl bg-white/5 p-3">
+                    <span>{row.body}</span>
+                    {canDrive ? (
+                      <button
+                        type="button"
+                        className="text-sm text-white/50 hover:text-white"
+                        onClick={() => void deleteNote.mutateAsync(row.id)}
+                      >
+                        remove
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+                {itemNotes.length === 0 ? (
+                  <li className="text-sm text-white/50">Nothing noted yet.</li>
+                ) : null}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white/60">From this item</h3>
+              <ul className="mt-2 space-y-2">
+                {itemIdeas.map((idea) => (
+                  <li key={idea.id} className="rounded-xl bg-white/5 p-3">
+                    💡 {idea.title}
+                  </li>
+                ))}
+                {itemActions.map((task) => (
+                  <li key={task.id} className="rounded-xl bg-white/5 p-3">
+                    🎯 {task.title} · {task.owner?.name ?? "unassigned"}
+                  </li>
+                ))}
+                {itemIdeas.length === 0 && itemActions.length === 0 ? (
+                  <li className="text-sm text-white/50">Nothing came out of this item yet.</li>
+                ) : null}
+              </ul>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      {canDrive ? (
+        <Card className="mt-4 bg-white/5 text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-white/70">
+              {position.is_last
+                ? "That was the last item. Close the meeting and the minutes write themselves."
+                : "Move the room to the next item when this one is done."}
+            </p>
+            <Button
+              size="xl"
+              disabled={agenda.next.isPending}
+              onClick={() => void agenda.next.mutateAsync()}
+            >
+              {agenda.next.isPending
+                ? "Moving..."
+                : position.is_last
+                  ? "That's a wrap"
+                  : "Next agenda →"}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+    </>
   );
 }
 
@@ -688,12 +1101,13 @@ function CloseStep({ sessionId, canDrive }: { sessionId: string; canDrive: boole
         normal Mshikaki. Nobody takes minutes.
       </p>
 
-      <dl className="mt-5 grid gap-3 sm:grid-cols-4">
+      <dl className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {[
+          ["Agenda items", data?.agenda.length ?? 0],
+          ["Notes", data?.notes.length ?? 0],
           ["Ideas", data?.counts.ideas ?? 0],
           ["Decisions", data?.counts.decisions ?? 0],
-          ["Tasks", data?.counts.tasks ?? 0],
-          ["Games", data?.counts.games ?? 0],
+          ["Actions", data?.counts.tasks ?? 0],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-xl bg-white/5 p-4">
             <dt className="text-sm text-white/60">{label}</dt>

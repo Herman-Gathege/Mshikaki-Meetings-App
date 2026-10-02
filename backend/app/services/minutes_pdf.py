@@ -11,6 +11,7 @@ no templates and no second content model.
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
@@ -18,6 +19,9 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.platypus import (
+    Image as PdfImage,
+)
 from reportlab.platypus import (
     ListFlowable,
     ListItem,
@@ -39,6 +43,9 @@ OUTCOME_WORDS = {
     "assigned": "someone is taking this",
     "none": "nothing decided",
 }
+
+# The mark on the masthead: the same one the app and the HTML minutes use.
+_MARK_PATH = Path(__file__).resolve().parent.parent / "assets" / "mshikaki-mark.png"
 
 
 def _escape(value: Any) -> str:
@@ -88,24 +95,30 @@ def _styles() -> dict[str, ParagraphStyle]:
     }
 
 
-def _table(rows: list[list[Any]], headers: list[str]) -> Table:
-    data = [[Paragraph(f"<b>{_escape(h)}</b>", _styles()["body"]) for h in headers]]
+def _table(rows: list[list[Any]], headers: list[str], headless: bool = False) -> Table:
+    """A plain table. `headless` is for layout rows that are not data."""
+    body = _styles()["body"]
+    data: list[list[Any]] = []
+    if not headless:
+        data.append([Paragraph(f"<b>{_escape(h)}</b>", body) for h in headers])
     for row in rows:
-        data.append([Paragraph(_escape(cell) or "—", _styles()["body"]) for cell in row])
+        data.append([Paragraph(_escape(cell) or "—", body) for cell in row])
+
     table = Table(data, hAlign="LEFT", colWidths=None)
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F4EFE9")),
-                ("LINEBELOW", (0, 0), (-1, -1), 0.4, LINE),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]
-        )
-    )
+    rules = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]
+    if not headless:
+        rules = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F4EFE9")),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.4, LINE),
+            *rules,
+        ]
+    table.setStyle(TableStyle(rules))
     return table
 
 
@@ -137,7 +150,38 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
 
     style = _styles()
     story: list[Any] = []
-    story.append(Paragraph("MSHIKAKI MEETING MINUTES", style["title"]))
+    counter = {"n": 1}  # section 1 is the details table below
+
+    def section(title: str) -> None:
+        counter["n"] += 1
+        story.append(Paragraph(f"{counter['n'] - 1}. {title}", style["heading"]))
+    # The mark sits beside the masthead, small enough to stay out of the way of
+    # the document itself.
+    masthead = Paragraph("MSHIKAKI MEETING MINUTES", style["title"])
+    if _MARK_PATH.exists():
+        header = Table(
+            [
+                [
+                    PdfImage(str(_MARK_PATH), width=11 * mm, height=11 * mm),
+                    masthead,
+                ]
+            ],
+            colWidths=[14 * mm, None],
+        )
+        header.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        story.append(header)
+    else:
+        story.append(masthead)
     story.append(Paragraph(_escape(session.get("title") or "Meeting"), style["heading"]))
     story.append(
         Paragraph(
@@ -147,7 +191,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     )
     story.append(Spacer(1, 6))
 
-    story.append(Paragraph("1. Meeting details", style["heading"]))
+    section("Meeting details")
     story.append(
         _table(
             [
@@ -166,7 +210,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
         )
     )
 
-    story.append(Paragraph("2. Agenda", style["heading"]))
+    section("Agenda")
     if agenda:
         story.append(
             ListFlowable(
@@ -179,7 +223,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
         story.append(Paragraph("No agenda was recorded.", style["muted"]))
 
     if games:
-        story.append(Paragraph("3. Opening and play", style["heading"]))
+        section("Opening and play")
         story.append(
             _table(
                 [[game.get("name"), game.get("winner") or "no winner"] for game in games],
@@ -187,7 +231,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
             )
         )
 
-    story.append(Paragraph("4. Ideas raised", style["heading"]))
+    section("Ideas raised")
     if ideas:
         story.append(
             _table(
@@ -206,7 +250,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     else:
         story.append(Paragraph("None recorded.", style["muted"]))
 
-    story.append(Paragraph("5. Decisions made", style["heading"]))
+    section("Decisions made")
     if decisions:
         story.append(
             _table(
@@ -224,7 +268,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     else:
         story.append(Paragraph("None recorded.", style["muted"]))
 
-    story.append(Paragraph("6. Notes", style["heading"]))
+    section("Notes")
     if notes:
         story.append(
             ListFlowable(
@@ -236,7 +280,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     else:
         story.append(Paragraph("No notes were kept.", style["muted"]))
 
-    story.append(Paragraph("7. Action items", style["heading"]))
+    section("Action items")
     if tasks:
         story.append(
             _table(
@@ -259,7 +303,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     raised = blockers.get("raised") or []
     resolved = blockers.get("resolved") or []
     if raised or resolved:
-        story.append(Paragraph("8. Blockers", style["heading"]))
+        section("Blockers")
         story.append(
             _table(
                 [[item.get("title"), item.get("reason"), "raised"] for item in raised]
@@ -268,7 +312,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
             )
         )
 
-    story.append(Paragraph("9. Closing summary", style["heading"]))
+    section("Closing summary")
     story.append(
         _table(
             [

@@ -36,7 +36,10 @@ export function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-5">
       <header className="space-y-2">
-        <p className="text-sm font-semibold tracking-wide text-ember-700 uppercase">Mshikaki</p>
+        <p className="flex items-center gap-2 text-sm font-semibold tracking-wide text-ember-700 uppercase">
+          <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-10" />
+          Mshikaki
+        </p>
         <h1 className="text-3xl font-semibold text-balance">
           We came to the meeting to play. Somehow we left with assigned tasks.
         </h1>

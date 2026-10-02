@@ -364,7 +364,10 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
 
   return (
     <Card className="bg-white/5 text-white">
-      <h2 className="text-3xl font-semibold">Ready to begin?</h2>
+      <h2 className="flex items-center gap-3 text-3xl font-semibold">
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-10" />
+        Ready to begin?
+      </h2>
       <p className="mt-2 max-w-2xl text-white/70">
         Play is the warm-up, not the meeting. Serious meetings can go straight to the agenda.
       </p>
@@ -1115,7 +1118,10 @@ function CloseStep({ sessionId, canDrive }: { sessionId: string; canDrive: boole
 
   return (
     <Card className="bg-white/5 text-white">
-      <h2 className="text-3xl font-semibold">🍢 That's a wrap!</h2>
+      <h2 className="flex items-center gap-3 text-3xl font-semibold">
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-12" />
+        That's a wrap!
+      </h2>
       <p className="mt-2 text-white/70">
         Closing writes the summary from everything that happened, and releases everybody back to
         normal Mshikaki. Nobody takes minutes.

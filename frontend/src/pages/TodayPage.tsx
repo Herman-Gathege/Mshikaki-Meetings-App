@@ -61,8 +61,9 @@ export function TodayPage() {
           </div>
         ) : (
           <EmptyState
-            title="🍢 No Mshikaki planned yet"
+            title="No Mshikaki planned yet"
             body="Get the team together. A meeting needs a title, a time and an agenda."
+            mark
             action={
               <ButtonLink to="/sessions" size="lg">
                 Plan a session

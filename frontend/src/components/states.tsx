@@ -74,13 +74,19 @@ export function EmptyState({
   title,
   body,
   action,
+  mark = false,
 }: {
   title: string;
   body?: string;
   action?: ReactNode;
+  /** The first-run screens show the skewer; the others stay plain. */
+  mark?: boolean;
 }) {
   return (
     <Card className="border-dashed bg-ink-50 text-center">
+      {mark ? (
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="mx-auto mb-2 size-16" />
+      ) : null}
       <p className="font-medium">{title}</p>
       {body ? <p className="mt-1 text-sm text-ink-600">{body}</p> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}

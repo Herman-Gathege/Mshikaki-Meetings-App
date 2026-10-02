@@ -6,8 +6,23 @@ the minutes for a meeting never change once the meeting is closed.
 
 from __future__ import annotations
 
+import base64
 from html import escape
+from pathlib import Path
 from typing import Any
+
+# The mark on the masthead. Inlined so a saved copy of the minutes still shows it
+# with no network and no second file to keep track of.
+_MARK_PATH = Path(__file__).resolve().parent.parent / "assets" / "mshikaki-mark.png"
+
+
+def _mark_data_uri() -> str:
+    try:
+        encoded = base64.b64encode(_MARK_PATH.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+    return f"data:image/png;base64,{encoded}"
+
 
 # The one-word outcome of an agenda item, said the way a person would.
 OUTCOME_WORDS: dict[str, str] = {
@@ -63,9 +78,19 @@ def render_minutes_html(
     generated = snapshot.get("generated_at")
 
     parts: list[str] = []
+    # Sections are numbered as they appear, so a meeting with no game does not
+    # jump from 2 to 4.
+    counter = {"n": 1}  # section 1 is the details table in the masthead block below
+
+    def section(title: str) -> None:
+        counter["n"] += 1
+        parts.append(f"<h3>{counter['n']}. {title}</h3>")
+
+    mark = _mark_data_uri()
+    masthead = f'<img class="mark" src="{mark}" alt="">' if mark else ""
     parts.append(
         f"""
-<h1>MSHIKAKI MEETING MINUTES</h1>
+<div class="masthead">{masthead}<h1>MSHIKAKI MEETING MINUTES</h1></div>
 <h2 class="doc-title">{_text(session.get("title"), "Meeting")}</h2>
 
 <h3>1. Meeting details</h3>
@@ -85,7 +110,7 @@ def render_minutes_html(
 """
     )
 
-    parts.append("<h3>2. Agenda</h3>")
+    section("Agenda")
     if agenda:
         parts.append("<ol>")
         for item in agenda:
@@ -97,7 +122,7 @@ def render_minutes_html(
     else:
         parts.append("<p class='muted'>No agenda was recorded</p>")
 
-    parts.append("<h3>3. Opening and play</h3>")
+    section("Opening and play")
     parts.append(
         _table(
             ["Game", "Type", "Questions", "Winner"],
@@ -114,7 +139,7 @@ def render_minutes_html(
         )
     )
 
-    parts.append("<h3>4. Ideas raised</h3>")
+    section("Ideas raised")
     parts.append(
         _table(
             ["Idea", "Raised by", "Status", "Under"],
@@ -130,7 +155,7 @@ def render_minutes_html(
         )
     )
 
-    parts.append("<h3>5. Decisions made</h3>")
+    section("Decisions made")
     if decisions:
         parts.append("<ol>")
         for decision in decisions:
@@ -148,7 +173,7 @@ def render_minutes_html(
     else:
         parts.append("<p class='muted'>None recorded</p>")
 
-    parts.append("<h3>6. Notes</h3>")
+    section("Notes")
     if notes:
         parts.append("<ul>")
         for note in notes:
@@ -159,7 +184,7 @@ def render_minutes_html(
     else:
         parts.append("<p class='muted'>No notes were kept.</p>")
 
-    parts.append("<h3>7. Action items</h3>")
+    section("Action items")
     parts.append(
         _table(
             ["Action", "Owner", "Due", "Status", "From"],
@@ -176,7 +201,7 @@ def render_minutes_html(
         )
     )
 
-    parts.append("<h3>8. Blockers</h3>")
+    section("Blockers")
     if raised:
         parts.append("<p><strong>Raised during the meeting</strong></p>")
         parts.append(
@@ -199,7 +224,7 @@ def render_minutes_html(
     if not raised and not resolved:
         parts.append("<p class='muted'>Nothing was blocked.</p>")
 
-    parts.append("<h3>9. Closing summary</h3>")
+    section("Closing summary")
     parts.append(
         _table(
             ["Item", "Count"],
@@ -216,7 +241,7 @@ def render_minutes_html(
         )
     )
 
-    parts.append("<h3>10. Record information</h3>")
+    section("Record information")
     parts.append(
         "<p class='muted'>"
         f"Mshikaki session reference {escape(reference)}. "
@@ -237,8 +262,11 @@ def render_minutes_html(
   body {{ font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
          color: #12100f; background: #fff; margin: 0 auto; max-width: 820px; padding: 32px 24px 64px;
          line-height: 1.5; }}
+  .masthead {{ display: flex; align-items: center; gap: 10px;
+               border-bottom: 3px solid #b1451f; padding-bottom: 8px; }}
+  .masthead .mark {{ width: 34px; height: 34px; flex: none; }}
   h1 {{ font-size: 20px; letter-spacing: .12em; text-transform: uppercase; color: #b1451f;
-        border-bottom: 3px solid #b1451f; padding-bottom: 8px; margin: 0 0 4px; }}
+        margin: 0; }}
   h2.doc-title {{ font-size: 26px; margin: 12px 0 24px; }}
   h3 {{ font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: #4a4a48;
         margin: 28px 0 8px; border-bottom: 1px solid #e6e2dd; padding-bottom: 4px; }}

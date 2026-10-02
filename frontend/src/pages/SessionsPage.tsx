@@ -60,8 +60,9 @@ export function SessionsPage() {
 
       {sessions.data?.items.length === 0 ? (
         <EmptyState
-          title="🍢 No Mshikaki planned yet"
+          title="No Mshikaki planned yet"
           body="Get the team together. A meeting needs a title, a time and an agenda."
+          mark
           action={<Button size="lg" onClick={() => setOpen(true)}>Plan a session</Button>}
         />
       ) : null}

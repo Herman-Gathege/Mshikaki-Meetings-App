@@ -665,6 +665,8 @@ function AgendaStep({
               <Input
                 className="bg-white text-ink-900"
                 value={note}
+                // The placeholder is an example, not a name: say what the field is.
+                aria-label="Note for this agenda item"
                 placeholder="Finance will confirm the figure tomorrow"
                 onChange={(event) => setNote(event.target.value)}
                 onKeyDown={(event) => {

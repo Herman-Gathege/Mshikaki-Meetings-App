@@ -85,7 +85,7 @@ export function EmptyState({
   return (
     <Card className="border-dashed bg-ink-50 text-center">
       {mark ? (
-        <img src="/mshikaki-mark.png" alt="" aria-hidden className="mx-auto mb-2 size-16" />
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="mx-auto mb-3 size-24" />
       ) : null}
       <p className="font-medium">{title}</p>
       {body ? <p className="mt-1 text-sm text-ink-600">{body}</p> : null}

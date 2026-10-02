@@ -371,7 +371,7 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
   return (
     <Card className="bg-white/5 text-white">
       <h2 className="flex items-center gap-3 text-3xl font-semibold">
-        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-10" />
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-[60px]" />
         Ready to begin?
       </h2>
       <p className="mt-2 max-w-2xl text-white/70">
@@ -1125,7 +1125,7 @@ function CloseStep({ sessionId, canDrive }: { sessionId: string; canDrive: boole
   return (
     <Card className="bg-white/5 text-white">
       <h2 className="flex items-center gap-3 text-3xl font-semibold">
-        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-12" />
+        <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-[72px]" />
         That's a wrap!
       </h2>
       <p className="mt-2 text-white/70">

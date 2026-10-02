@@ -37,7 +37,7 @@ export function LoginPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-5">
       <header className="space-y-2">
         <p className="flex items-center gap-2 text-sm font-semibold tracking-wide text-ember-700 uppercase">
-          <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-10" />
+          <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-[60px]" />
           Mshikaki
         </p>
         <h1 className="text-3xl font-semibold text-balance">

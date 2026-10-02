@@ -162,11 +162,11 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
         header = Table(
             [
                 [
-                    PdfImage(str(_MARK_PATH), width=11 * mm, height=11 * mm),
+                    PdfImage(str(_MARK_PATH), width=17 * mm, height=17 * mm),
                     masthead,
                 ]
             ],
-            colWidths=[14 * mm, None],
+            colWidths=[21 * mm, None],
         )
         header.setStyle(
             TableStyle(

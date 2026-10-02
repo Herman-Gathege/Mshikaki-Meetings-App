@@ -61,7 +61,7 @@ export function AppLayout() {
             to="/"
             className="flex items-center gap-2 text-base font-semibold tracking-tight text-ember-700"
           >
-            <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-6" />
+            <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-9" />
             MSHIKAKI
           </NavLink>
           <span className="hidden truncate text-sm text-ink-600 sm:inline">
@@ -184,7 +184,7 @@ export function AppLayout() {
 
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-ink-200 bg-white p-4 lg:block">
         <div className="flex items-center gap-2 px-2 py-3">
-          <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-8" />
+          <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-12" />
           <p className="text-lg font-semibold tracking-tight text-ember-700">MSHIKAKI</p>
         </div>
         <nav className="space-y-1">

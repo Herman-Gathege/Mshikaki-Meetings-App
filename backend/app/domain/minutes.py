@@ -264,7 +264,7 @@ def render_minutes_html(
          line-height: 1.5; }}
   .masthead {{ display: flex; align-items: center; gap: 10px;
                border-bottom: 3px solid #b1451f; padding-bottom: 8px; }}
-  .masthead .mark {{ width: 34px; height: 34px; flex: none; }}
+  .masthead .mark {{ width: 52px; height: 52px; flex: none; }}
   h1 {{ font-size: 20px; letter-spacing: .12em; text-transform: uppercase; color: #b1451f;
         margin: 0; }}
   h2.doc-title {{ font-size: 26px; margin: 12px 0 24px; }}

@@ -74,8 +74,13 @@ export function RunModePage() {
   const [draftStage, setDraftStage] = useState<Step | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const released = useRef(false);
+  const firstStatus = useRef<string | null>(null);
 
   const data = session.data;
+  if (data && firstStatus.current === null) firstStatus.current = data.status;
+  // Arrived after the wrap versus watched the wrap happen: the first gets the
+  // record to read, the second gets their navigation back.
+  const arrivedAfterTheWrap = firstStatus.current === "completed";
   const serverStage: Step = isStage(data?.run_mode_stage) ? data.run_mode_stage : "play";
   const isStaff = me.data?.role === "owner" || me.data?.role === "admin";
   const canDrive = Boolean(
@@ -96,16 +101,23 @@ export function RunModePage() {
   const settled = session.isFetchedAfterMount;
   useEffect(() => {
     if (!data || released.current || !settled) return;
+    if (data.status === "completed" && arrivedAfterTheWrap) return;
     if (data.status === "completed" || data.status === "cancelled") {
       released.current = true;
       toast("🍢 That's a wrap! Back to normal Mshikaki.");
       navigate(`/sessions/${data.id}`, { replace: true });
     }
-  }, [data, settled, navigate]);
+  }, [data, settled, navigate, arrivedAfterTheWrap]);
 
   if (session.isPending) return <LoadingState label="Joining the meeting…" />;
   if (session.isError) return <ErrorState error={session.error} />;
   if (!data) return null;
+
+  // A meeting that had already finished when you opened it is a record to read,
+  // not a room to run. This is what "Review Run Mode" opens.
+  if (data.status === "completed" && arrivedAfterTheWrap) {
+    return <MeetingReview session={data} />;
+  }
 
   // A planned meeting is not a live screen. Say so rather than showing steps that
   // cannot do anything yet.
@@ -298,6 +310,127 @@ export function RunModePage() {
         // An idea raised while the room is on an item belongs to that item.
         agendaItemId={stage === "agenda" ? data.current_agenda_item_id : undefined}
       />
+    </div>
+  );
+}
+
+const REVIEW_OUTCOMES: Record<string, string> = {
+  accomplished: "done with this",
+  pending: "still pending",
+  assigned: "someone is taking this",
+  none: "nothing decided",
+};
+
+/**
+ * A meeting that has finished, shown as the record it left behind.
+
+ * Read-only on purpose: the room is gone, and the minutes are the frozen
+ * document. This exists so "Review Run Mode" shows the meeting instead of
+ * bouncing back to where it came from.
+ */
+function MeetingReview({ session }: { session: SessionDetail }) {
+  const tasks = useTasks({ session_id: session.id });
+  const ideas = useIdeas({ session_id: session.id });
+
+  const notesFor = (itemId: string) => session.notes.filter((note) => note.agenda_item_id === itemId);
+  const ideasFor = (itemId: string) =>
+    (ideas.data?.items ?? []).filter((idea) => idea.agenda_item_id === itemId);
+  const actionsFor = (itemId: string) =>
+    (tasks.data?.items ?? []).filter((task) => task.origin?.agenda_item_id === itemId);
+
+  const counts: [string, number][] = [
+    ["Agenda items", session.agenda.length],
+    ["Notes", session.notes.length],
+    ["Ideas", session.counts.ideas],
+    ["Decisions", session.counts.decisions],
+    ["Actions", session.counts.tasks],
+  ];
+
+  return (
+    <div className="min-h-dvh bg-ink-900 px-4 py-8 text-white">
+      <main className="mx-auto max-w-3xl space-y-5">
+        <header className="space-y-2">
+          <p className="text-xs tracking-widest text-white/50 uppercase">Meeting record</p>
+          <h1 className="flex items-center gap-3 text-3xl font-semibold">
+            <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-[72px]" />
+            {session.title}
+          </h1>
+          <p className="text-white/70">
+            Finished {formatDateTime(session.ended_at)}
+            {session.facilitator ? ` · ${session.facilitator.name} facilitated` : ""}
+          </p>
+        </header>
+
+        <Card className="bg-white/5 text-white">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {counts.map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs text-white/50 uppercase">{label}</dt>
+                <dd className="text-2xl font-semibold">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+
+        {session.agenda.map((item, index) => {
+          const notes = notesFor(item.id);
+          const ideasHere = ideasFor(item.id);
+          const actions = actionsFor(item.id);
+          const nothing = notes.length === 0 && ideasHere.length === 0 && actions.length === 0;
+          return (
+            <Card key={item.id} className="bg-white/5 text-white">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-xl font-semibold">
+                  {index + 1}. {item.title}
+                </h2>
+                <span className="text-sm text-white/60">
+                  {item.outcome ? REVIEW_OUTCOMES[item.outcome] : item.covered ? "discussed" : "not reached"}
+                </span>
+              </div>
+              {nothing ? (
+                <p className="mt-2 text-sm text-white/50">Nothing was recorded on this item.</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-sm">
+                  {notes.map((note) => (
+                    <li key={note.id} className="rounded-lg bg-white/5 p-2">
+                      📝 {note.body}
+                    </li>
+                  ))}
+                  {ideasHere.map((idea) => (
+                    <li key={idea.id} className="rounded-lg bg-white/5 p-2">
+                      💡 {idea.title} · {idea.status}
+                    </li>
+                  ))}
+                  {actions.map((task) => (
+                    <li key={task.id} className="rounded-lg bg-white/5 p-2">
+                      🎯 {task.title} · {task.owner?.name ?? "unassigned"} · {task.status}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          );
+        })}
+
+        <Card className="bg-white/5 text-white">
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink to={`/sessions/${session.id}`} size="lg">
+              Open the minutes →
+            </ButtonLink>
+            <ButtonLink
+              href={`/api/sessions/${session.id}/summary.pdf`}
+              download
+              variant="secondary"
+              size="lg"
+            >
+              🖨️ Download PDF
+            </ButtonLink>
+            <ButtonLink to="/" variant="ghost" className="text-white hover:bg-white/10">
+              Leave
+            </ButtonLink>
+          </div>
+        </Card>
+      </main>
     </div>
   );
 }

@@ -152,12 +152,67 @@ def _add_participant_row(
     return row
 
 
+def join_session(
+    db: DbSession,
+    *,
+    session: MeetingSession,
+    actor,
+    actor_name: str,
+) -> SessionParticipant:
+    """A team member puts themselves in the room.
+
+    Scanning the code when you already have an account used to leave you out of
+    the attendance record, because only the sign-up path ever added a row here.
+    Joining again is a no-op: you are already in, and nobody is counted twice.
+    """
+    if actor.user_id is None:
+        raise AppError("Only a signed-in member can join this way.", code="join.no_account")
+
+    member = db.execute(
+        select(Membership).where(
+            Membership.user_id == actor.user_id, Membership.team_id == session.team_id
+        )
+    ).scalar_one_or_none()
+    if member is None:
+        raise AppError("That meeting belongs to another team.", code="join.not_member")
+
+    existing = db.execute(
+        select(SessionParticipant).where(
+            SessionParticipant.session_id == session.id,
+            SessionParticipant.user_id == actor.user_id,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        # Present is present: coming back does not undo having been marked here.
+        if not existing.attended:
+            existing.attended = True
+            db.flush()
+        return existing
+
+    row = _add_participant_row(db, session=session, user_id=actor.user_id)
+    row.attended = True
+    db.flush()
+    record_activity(
+        db,
+        team_id=session.team_id,
+        session_id=session.id,
+        actor=actor,
+        actor_name=actor_name,
+        verb="session.participant_joined",
+        target_type="session",
+        target_id=session.id,
+        payload={"role": row.role, "name": actor_name},
+    )
+    return row
+
+
 def add_participant(
     db: DbSession,
     *,
     session: MeetingSession,
     actor,
     actor_name: str,
+
     user_id: uuid.UUID | None = None,
     guest_id: uuid.UUID | None = None,
     name: str | None = None,

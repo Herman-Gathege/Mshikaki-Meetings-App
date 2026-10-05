@@ -7,6 +7,9 @@ import { Button, Card, Field, Input } from "@/components/ui/kit";
 export function LoginPage() {
   const [params] = useSearchParams();
   const inviteCode = params.get("invite") ?? "";
+  // Where to go after signing in. The QR page sends people here and expects
+  // them back, so a code is never lost on the way through the login screen.
+  const next = params.get("next") ?? "";
   const [mode, setMode] = useState<"signin" | "create">(inviteCode ? "create" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +33,7 @@ export function LoginPage() {
         invite_code: inviteCode || undefined,
       });
     }
-    navigate("/");
+    navigate(next.startsWith("/") ? next : "/");
   };
 
   return (

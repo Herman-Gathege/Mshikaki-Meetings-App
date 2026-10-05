@@ -10,6 +10,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ApiError, apiFetch } from "@/api/client";
+import { useMe } from "@/api/hooks";
 import type { SessionDetail } from "@/api/types";
 import { Button, Card, Field, Input } from "@/components/ui/kit";
 import { ErrorState, LoadingState } from "@/components/states";
@@ -38,6 +39,16 @@ export function JoinPage() {
     queryKey: ["join", code],
     queryFn: () => apiFetch<Preview>(`/join/${code}`),
     retry: false,
+  });
+
+  const me = useMe();
+
+  const selfJoin = useMutation({
+    mutationFn: (sessionId: string) =>
+      apiFetch<SessionDetail>(`/sessions/${sessionId}/join`, { method: "POST" }),
+    onSuccess: (session) => {
+      navigate(session.run_mode_active ? `/sessions/${session.id}/run` : `/sessions/${session.id}`);
+    },
   });
 
   const join = useMutation({
@@ -95,7 +106,39 @@ export function JoinPage() {
         )}
       </header>
 
-      <Card className="space-y-4">
+      {me.data ? (
+        // Somebody who already has an account should never be asked to make a
+        // second one just to be counted in a meeting.
+        <Card className="space-y-4">
+          <p className="text-sm text-ink-600">
+            You are signed in as{" "}
+            <strong className="text-ink-900">{me.data.user.display_name}</strong>.
+          </p>
+          {data?.session ? (
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={selfJoin.isPending}
+              onClick={() => selfJoin.mutate(data.session!.id)}
+            >
+              {selfJoin.isPending ? "Joining…" : `Join ${data.session.title}`}
+            </Button>
+          ) : (
+            <p className="text-sm text-ink-600">
+              No meeting is running. Open Mshikaki and the team is there.
+            </p>
+          )}
+          {selfJoin.isError ? (
+            <p className="text-sm text-red-700">
+              {selfJoin.error instanceof Error ? selfJoin.error.message : "Could not join."}
+            </p>
+          ) : null}
+          <Link className="text-sm text-ember-700 underline" to="/">
+            Go to Mshikaki →
+          </Link>
+        </Card>
+      ) : (
+        <Card className="space-y-4">
         <Field label="Your name" hint="This is how you appear in games and in the record.">
           <Input
             autoFocus
@@ -137,7 +180,10 @@ export function JoinPage() {
               <p className="font-medium text-ink-900">
                 That email already has a Mshikaki account.
               </p>
-              <Link className="mt-1 inline-block text-ember-700 underline" to="/login">
+              <Link
+                className="mt-1 inline-block text-ember-700 underline"
+                to={`/login?next=${encodeURIComponent(`/join/${code}`)}`}
+              >
                 Sign in instead →
               </Link>
             </div>
@@ -147,7 +193,8 @@ export function JoinPage() {
             </p>
           )
         ) : null}
-      </Card>
+        </Card>
+      )}
 
       <p className="text-xs text-ink-600">
         You are created as a member of {data?.team_name ?? "the team"}. That account is what lets

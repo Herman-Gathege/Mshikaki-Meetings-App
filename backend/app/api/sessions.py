@@ -236,6 +236,25 @@ def _sync_achievements_for_session(db: DbSession, session) -> None:
             sync_achievements(db, team_id=session.team_id, user_id=participant.user_id)
 
 
+@router.post("/sessions/{session_id}/join")
+def join_the_meeting(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """The person using this account is in this meeting.
+
+    This is what the QR code does for somebody who already has an account: no
+    second account, and their name lands in the attendance record.
+    """
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "session.join.self", session_resource(context, session))
+    meetings.join_session(
+        db, session=session, actor=context.actor, actor_name=context.name
+    )
+    return meetings.session_detail(db, session)
+
+
 @router.get("/sessions/{session_id}/participants")
 def list_participants(
     session_id: uuid.UUID,

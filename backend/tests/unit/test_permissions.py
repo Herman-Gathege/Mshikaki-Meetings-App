@@ -142,6 +142,11 @@ CASES: list[tuple[str, Actor, Resource, bool]] = [
     ("note.create", MEMBER, CLOSED_SESSION, False),
     ("note.delete.any", FACILITATOR, OPEN_SESSION_MINE, True),
     ("note.delete.any", MEMBER, OPEN_SESSION_MINE, False),
+    # Anybody in the team may put themselves in a meeting that is running.
+    ("session.join.self", MEMBER, OPEN_SESSION_MINE, True),
+    ("session.join.self", FACILITATOR, OPEN_SESSION_MINE, True),
+    ("session.join.self", MEMBER, CLOSED_SESSION, False),
+    ("session.join.self", STRANGER, OPEN_SESSION_MINE, False),
     # Playing is open to the room while the meeting runs, and only then.
     ("game.answer", MEMBER, OPEN_SESSION_MINE, True),
     ("game.answer", GUEST, OPEN_SESSION_MINE, True),

@@ -126,6 +126,12 @@ RULES: dict[str, Callable[[Actor, Resource], bool]] = {
     "session.close.own": lambda a, r: _role_in(a, _TEAM_ROLES),
     "session.close.any": lambda a, r: _role_in(a, _STAFF),
     "session.participant.manage": lambda a, r: _manages_session(a, r),
+    # Joining a meeting you were invited to is not managing it: a team member
+    # adds themselves while the room is open, and nobody has to create a second
+    # account to be counted as present.
+    "session.join.self": lambda a, r: (
+        (_role_in(a, _TEAM_ROLES) or a.is_guest) and r.session_is_open()
+    ),
     "agenda.manage": lambda a, r: _manages_session(a, r),
     # Notes are the room's scratchpad, so anybody in the meeting may add one.
     "note.create": lambda a, r: (_role_in(a, _TEAM_ROLES) or a.is_guest) and r.session_is_open(),

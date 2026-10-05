@@ -102,6 +102,7 @@ class Note(UuidPk, Timestamps, SoftDelete, Base):
     __table_args__ = (
         Index("ix_notes_session", "session_id"),
         Index("ix_notes_agenda_item", "agenda_item_id"),
+        CheckConstraint("status IN ('open', 'pending', 'done', 'backlog')", name="status_valid"),
     )
 
     team_id: Mapped[uuid.UUID] = mapped_column(
@@ -113,6 +114,15 @@ class Note(UuidPk, Timestamps, SoftDelete, Base):
     agenda_item_id: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("agenda_items.id", ondelete="SET NULL"), nullable=True
     )
+    # A note stays a note, but it can be given to somebody and marked where it
+    # got to. That is the smallest thing that makes "who is doing this?" answerable
+    # without turning every sentence into a task.
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)
+    # [{"id": ..., "name": ...}] for the people named with @ in the body.
+    mentions: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     author_id: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

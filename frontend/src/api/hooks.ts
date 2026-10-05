@@ -304,6 +304,30 @@ export function useSessionNotes(sessionId: string) {
   });
 }
 
+/** Editing a note, giving it to somebody, or saying where it got to. */
+export function useUpdateNote(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payload: {
+      noteId: string;
+      body?: string;
+      status?: string;
+      assignee_id?: string | null;
+      clear_assignee?: boolean;
+    }) =>
+      apiFetch<Note>(`/sessions/${sessionId}/notes/${payload.noteId}`, {
+        method: "PATCH",
+        json: {
+          body: payload.body,
+          status: payload.status,
+          assignee_id: payload.assignee_id,
+          clear_assignee: payload.clear_assignee ?? false,
+        },
+      }),
+    onSuccess: () => invalidate(["sessions", "activity"]),
+  });
+}
+
 export function useDeleteNote(sessionId: string) {
   const invalidate = useInvalidate();
   return useMutation({

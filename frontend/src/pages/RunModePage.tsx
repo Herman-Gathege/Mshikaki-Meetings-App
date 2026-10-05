@@ -28,6 +28,7 @@ import {
   useSessionLifecycle,
   useSessionNotes,
   useSessionParticipants,
+  useUpdateNote,
   useStartPlay,
   useTasks,
   useUpdateIdea,
@@ -40,6 +41,7 @@ import { ErrorState, LoadingState } from "@/components/states";
 import { toast } from "@/components/toast";
 import { Button, ButtonLink, Card, Field, Input, Select } from "@/components/ui/kit";
 import { formatDateTime } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 
 // The journey is stated in the words a facilitator would use out loud.
 const STEPS = [
@@ -652,6 +654,7 @@ function AgendaStep({
   const agenda = useAgenda(session.id);
   const addNote = useSessionNotes(session.id);
   const deleteNote = useDeleteNote(session.id);
+  const updateNote = useUpdateNote(session.id);
   const record = useRecordDecision();
   const createTask = useCreateTask();
   const participants = useSessionParticipants(session.id);
@@ -661,6 +664,8 @@ function AgendaStep({
 
   const [panel, setPanel] = useState<"note" | "decide" | "action" | null>("note");
   const [note, setNote] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
   const [statement, setStatement] = useState("");
   const [action, setAction] = useState("");
   const [ownerId, setOwnerId] = useState("");
@@ -822,6 +827,21 @@ function AgendaStep({
                 {addNote.isPending ? "Saving..." : "Note it"}
               </Button>
             </div>
+            {people.length ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/60">
+                <span>Give it to somebody:</span>
+                {people.map((person) => (
+                  <button
+                    key={person.id}
+                    type="button"
+                    className="rounded-full bg-white/10 px-2 py-1 hover:bg-white/20"
+                    onClick={() => setNote((value) => `${value.trim()} @${person.name} `.trimStart())}
+                  >
+                    @{person.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -921,17 +941,122 @@ function AgendaStep({
               <h3 className="text-sm font-semibold text-white/60">Notes on this item</h3>
               <ul className="mt-2 space-y-2">
                 {itemNotes.map((row) => (
-                  <li key={row.id} className="flex items-start justify-between gap-3 rounded-xl bg-white/5 p-3">
-                    <span>{row.body}</span>
-                    {canDrive ? (
-                      <button
-                        type="button"
-                        className="text-sm text-white/50 hover:text-white"
-                        onClick={() => void deleteNote.mutateAsync(row.id)}
+                  <li key={row.id} className="rounded-xl bg-white/5 p-3">
+                    {editing === row.id ? (
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          className="bg-white text-ink-900"
+                          aria-label="Edit this note"
+                          value={editBody}
+                          onChange={(event) => setEditBody(event.target.value)}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={!editBody.trim() || updateNote.isPending}
+                          onClick={() =>
+                            void updateNote
+                              .mutateAsync({ noteId: row.id, body: editBody })
+                              .then(() => setEditing(null))
+                          }
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-white/10"
+                          onClick={() => setEditing(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3">
+                        <span>
+                          {row.body}
+                          {row.edited ? (
+                            <span className="ml-2 text-xs text-white/40">edited</span>
+                          ) : null}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            className="text-sm text-white/50 hover:text-white"
+                            onClick={() => {
+                              setEditing(row.id);
+                              setEditBody(row.body);
+                            }}
+                          >
+                            edit
+                          </button>
+                          {canDrive ? (
+                            <button
+                              type="button"
+                              className="text-sm text-white/50 hover:text-white"
+                              onClick={() => void deleteNote.mutateAsync(row.id)}
+                            >
+                              remove
+                            </button>
+                          ) : null}
+                        </span>
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5",
+                          row.status === "done"
+                            ? "bg-emerald-400/20 text-emerald-200"
+                            : row.status === "pending"
+                              ? "bg-ember-500/20 text-ember-200"
+                              : "bg-white/10 text-white/60",
+                        )}
                       >
-                        remove
-                      </button>
-                    ) : null}
+                        {row.status === "open" ? "no state yet" : row.status}
+                      </span>
+                      {row.assignee_name ? (
+                        <span className="text-white/70">👤 {row.assignee_name}</span>
+                      ) : null}
+                      {canDrive ? (
+                        <>
+                          <select
+                            aria-label="Who has this note"
+                            className="rounded-lg bg-white/10 px-2 py-1 text-white"
+                            value={row.assignee_id ?? ""}
+                            onChange={(event) =>
+                              void updateNote.mutateAsync({
+                                noteId: row.id,
+                                assignee_id: event.target.value || null,
+                                clear_assignee: !event.target.value,
+                              })
+                            }
+                          >
+                            <option value="">nobody yet</option>
+                            {people.map((person) => (
+                              <option key={person.id} value={person.user_id ?? ""}>
+                                {person.name}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label="Where this note got to"
+                            className="rounded-lg bg-white/10 px-2 py-1 text-white"
+                            value={row.status}
+                            onChange={(event) =>
+                              void updateNote.mutateAsync({
+                                noteId: row.id,
+                                status: event.target.value,
+                              })
+                            }
+                          >
+                            <option value="open">open</option>
+                            <option value="pending">pending</option>
+                            <option value="done">done</option>
+                            <option value="backlog">backlog</option>
+                          </select>
+                        </>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
                 {itemNotes.length === 0 ? (
@@ -970,12 +1095,43 @@ function AgendaStep({
 
       {canDrive ? (
         <Card className="mt-4 bg-white/5 text-white">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {session.agenda.map((row, index) => (
+              <button
+                key={row.id}
+                type="button"
+                aria-current={row.is_current ? "step" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-1 text-sm",
+                  row.is_current
+                    ? "bg-ember-500 text-ink-900"
+                    : row.covered
+                      ? "bg-white/5 text-white/40"
+                      : "bg-white/10 text-white/70 hover:bg-white/20",
+                )}
+                onClick={() => void agenda.jumpTo.mutateAsync(row.id)}
+              >
+                {index + 1}. {row.title}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-white/70">
               {position.is_last
                 ? "That was the last item. Close the meeting and the minutes write themselves."
                 : "Move the room to the next item when this one is done."}
             </p>
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+              disabled={position.position <= 1 || agenda.jumpTo.isPending}
+              onClick={() => {
+                const earlier = session.agenda[position.position - 2];
+                if (earlier) void agenda.jumpTo.mutateAsync(earlier.id);
+              }}
+            >
+              ← Previous
+            </Button>
             <Button
               size="xl"
               disabled={agenda.next.isPending}

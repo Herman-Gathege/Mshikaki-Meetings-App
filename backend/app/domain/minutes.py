@@ -201,8 +201,12 @@ def render_minutes_html(
     if notes:
         parts.append("<ul>")
         for note in notes:
-            under = note.get("agenda_title")
-            suffix = f" <span class='muted'>({escape(str(under))})</span>" if under else ""
+            bits = [str(note.get("agenda_title"))] if note.get("agenda_title") else []
+            if note.get("assignee_name"):
+                bits.append(str(note["assignee_name"]))
+            if note.get("status") and note["status"] != "open":
+                bits.append(str(note["status"]))
+            suffix = f" <span class='muted'>({escape(', '.join(bits))})</span>" if bits else ""
             parts.append(f"<li>{escape(str(note.get('body') or ''))}{suffix}</li>")
         parts.append("</ul>")
     else:

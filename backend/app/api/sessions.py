@@ -19,6 +19,7 @@ from app.schemas import (
     AttendanceRequest,
     CancelRequest,
     NoteCreateRequest,
+    NoteUpdateRequest,
     ParticipantRequest,
     ReopenRequest,
     RunModeStageRequest,
@@ -481,7 +482,33 @@ def add_note(
         actor=context.actor,
         actor_name=context.name,
     )
-    return meetings.note_row(note)
+    # The owner's name comes back with the note, so the room sees who has it.
+    return meetings.note_row_payload(db, note)
+
+
+@router.patch("/sessions/{session_id}/notes/{note_id}")
+def update_note(
+    session_id: uuid.UUID,
+    note_id: uuid.UUID,
+    payload: NoteUpdateRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Edit a note, give it to somebody in the room, or mark where it got to."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "note.create", session_resource(context, session))
+    note = meetings.update_note(
+        db,
+        session=session,
+        note_id=note_id,
+        actor=context.actor,
+        actor_name=context.name,
+        body=payload.body,
+        status=payload.status,
+        assignee_id=payload.assignee_id,
+        clear_assignee=payload.clear_assignee,
+    )
+    return meetings.note_row_payload(db, note)
 
 
 @router.delete("/sessions/{session_id}/notes/{note_id}")

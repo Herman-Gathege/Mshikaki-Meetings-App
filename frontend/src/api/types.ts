@@ -104,10 +104,21 @@ export interface Note {
   id: string;
   body: string;
   author: string;
+  author_id: string | null;
   agenda_item_id: string | null;
   agenda_title?: string | null;
+  /** Somebody in the room the note was given to, by assignment or by @. */
+  assignee_id: string | null;
+  assignee_name: string | null;
+  status: NoteStatus;
+  mentions: { id: string; name: string }[];
   created_at: string | null;
+  updated_at: string | null;
+  edited: boolean;
 }
+
+/** A note stays a note, but it can say where it got to. */
+export type NoteStatus = "open" | "pending" | "done" | "backlog";
 
 export interface SessionListItem {
   id: string;

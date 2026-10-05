@@ -130,9 +130,15 @@ def _agenda_line(item: dict[str, Any]) -> str:
 
 
 def _note_line(note: dict[str, Any]) -> str:
+    """The note, with where it came from and who has it."""
     line = _escape(note.get("body"))
-    under = note.get("agenda_title")
-    return f"{line} <font color='#6B6762'>({_escape(under)})</font>" if under else line
+    bits = [str(note.get("agenda_title"))] if note.get("agenda_title") else []
+    if note.get("assignee_name"):
+        bits.append(str(note["assignee_name"]))
+    if note.get("status") and note["status"] != "open":
+        bits.append(str(note["status"]))
+    suffix = f" <font color='#6B6762'>({_escape(', '.join(bits))})</font>" if bits else ""
+    return f"{line}{suffix}"
 
 
 def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: str) -> bytes:

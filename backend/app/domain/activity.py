@@ -73,6 +73,11 @@ VERBS: dict[str, VerbSpec] = {
         "noted: {body}",
         visibility=ActivityVisibility.PARTICIPANTS.value,
     ),
+    "note.updated": V(
+        "note.updated",
+        "changed a note ({changes})",
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
     "note.removed": V("note.removed", "removed a note"),
     # Games
     "game.started": V(

@@ -299,6 +299,12 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
             "id": str(note.id),
             "body": note.body,
             "author": note.author_name,
+            "assignee_name": (
+                db.get(User, note.assignee_id).display_name
+                if note.assignee_id and db.get(User, note.assignee_id)
+                else None
+            ),
+            "status": note.status,
             "agenda_item_id": str(note.agenda_item_id) if note.agenda_item_id else None,
             "created_at": note.created_at.isoformat() if note.created_at else None,
         }

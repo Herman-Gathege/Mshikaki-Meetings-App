@@ -22,12 +22,17 @@ from app.db.models import (
 )
 from app.db.models import Session as MeetingSession
 from app.domain import agenda as agenda_rules
+from app.domain import mentions as mention_rules
 from app.domain import run_mode as run_mode_rules
 from app.domain import sessions as session_rules
 from app.domain.enums import GamePlayStatus, ParticipantRole, SessionStatus, TaskStatus
 from app.errors import AppError, NotFoundError
 from app.services.activity import record_activity
 from app.services.summary import store_snapshot
+from app.services.work import user_name
+
+# The states a note can be in. Four, because they are the four a person uses.
+NOTE_STATUSES = ("open", "pending", "done", "backlog")
 
 
 def get_session(db: DbSession, *, team_id: uuid.UUID, session_id: uuid.UUID) -> MeetingSession:
@@ -212,7 +217,6 @@ def add_participant(
     session: MeetingSession,
     actor,
     actor_name: str,
-
     user_id: uuid.UUID | None = None,
     guest_id: uuid.UUID | None = None,
     name: str | None = None,
@@ -826,6 +830,21 @@ def set_agenda_outcome(
 # --- notes ---------------------------------------------------------------------
 
 
+def note_people(db: DbSession, session: MeetingSession) -> list[dict]:
+    """Everybody who can be named in a note: the room, as the app shows it."""
+    people: list[dict] = []
+    for participant in session.participants:
+        if participant.user_id is not None:
+            user = db.get(User, participant.user_id)
+            if user is not None:
+                people.append({"id": str(user.id), "name": user.display_name})
+        elif participant.guest_id is not None:
+            guest = db.get(Guest, participant.guest_id)
+            if guest is not None:
+                people.append({"id": str(guest.id), "name": guest.display_name, "guest": True})
+    return people
+
+
 def add_note(
     db: DbSession,
     *,
@@ -835,9 +854,14 @@ def add_note(
     actor,
     actor_name: str,
 ) -> Note:
-    """One line of meeting scratchpad, attached to the item under discussion."""
+    """One line of meeting scratchpad, attached to the item under discussion.
+
+    Naming somebody with @ gives them the note: the assignee is the first person
+    named unless the caller says otherwise.
+    """
     if agenda_item_id is not None:
         _agenda_item(db, session, agenda_item_id)
+    named = mention_rules.find_mentions(body, note_people(db, session))
     note = Note(
         team_id=session.team_id,
         session_id=session.id,
@@ -845,6 +869,8 @@ def add_note(
         author_id=actor.user_id,
         author_name=actor_name,
         body=body.strip()[:2000],
+        mentions=named,
+        assignee_id=(uuid.UUID(named[0]["id"]) if named and not named[0].get("guest") else None),
     )
     db.add(note)
     db.flush()
@@ -862,6 +888,67 @@ def add_note(
     return note
 
 
+def update_note(
+    db: DbSession,
+    *,
+    session: MeetingSession,
+    note_id: uuid.UUID,
+    actor,
+    actor_name: str,
+    body: str | None = None,
+    status: str | None = None,
+    assignee_id: uuid.UUID | None = None,
+    clear_assignee: bool = False,
+) -> Note:
+    """Edit a note, give it to somebody, or say where it got to.
+
+    Anybody in the room may do this: a note is shared working memory, and the
+    trail records who changed what.
+    """
+    note = db.get(Note, note_id)
+    if note is None or note.session_id != session.id or note.deleted_at is not None:
+        raise NotFoundError("That note does not exist.")
+
+    changes: dict[str, object] = {}
+    if body is not None and body.strip() and body.strip() != note.body:
+        note.body = body.strip()[:2000]
+        note.mentions = mention_rules.find_mentions(note.body, note_people(db, session))
+        changes["body"] = note.body
+    if status is not None and status != note.status:
+        if status not in NOTE_STATUSES:
+            raise AppError("That is not a note state.", code="note.bad_status")
+        note.status = status
+        changes["status"] = status
+    if clear_assignee:
+        note.assignee_id = None
+        changes["assignee"] = None
+    elif assignee_id is not None and assignee_id != note.assignee_id:
+        member = db.execute(
+            select(Membership).where(
+                Membership.user_id == assignee_id, Membership.team_id == session.team_id
+            )
+        ).scalar_one_or_none()
+        if member is None:
+            raise AppError("That person is not in this team.", code="note.not_member")
+        note.assignee_id = assignee_id
+        changes["assignee"] = user_name(db, assignee_id)
+
+    db.flush()
+    if changes:
+        record_activity(
+            db,
+            team_id=session.team_id,
+            session_id=session.id,
+            actor=actor,
+            actor_name=actor_name,
+            verb="note.updated",
+            target_type="note",
+            target_id=note.id,
+            payload={"body": note.body[:120], "changes": ", ".join(sorted(changes))},
+        )
+    return note
+
+
 def list_notes(db: DbSession, *, session: MeetingSession) -> list[dict]:
     return notes_for(db, session)
 
@@ -876,7 +963,7 @@ def notes_for(db: DbSession, session: MeetingSession) -> list[dict]:
         .scalars()
         .all()
     )
-    return [note_row(note) for note in rows]
+    return [_note_row(db, note) for note in rows]
 
 
 def agenda_progress(session: MeetingSession) -> dict:
@@ -899,14 +986,31 @@ def agenda_progress(session: MeetingSession) -> dict:
     }
 
 
-def note_row(note: Note) -> dict:
+def note_row(note: Note, *, assignee_name: str | None = None) -> dict:
     return {
         "id": str(note.id),
         "body": note.body,
         "author": note.author_name,
+        "author_id": str(note.author_id) if note.author_id else None,
         "agenda_item_id": str(note.agenda_item_id) if note.agenda_item_id else None,
+        "assignee_id": str(note.assignee_id) if note.assignee_id else None,
+        "assignee_name": assignee_name,
+        "status": note.status,
+        "mentions": list(note.mentions or []),
         "created_at": note.created_at.isoformat() if note.created_at else None,
+        "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+        "edited": bool(note.updated_at and note.created_at and note.updated_at > note.created_at),
     }
+
+
+def note_row_payload(db: DbSession, note: Note) -> dict:
+    """The public shape of one note, with the owner's name resolved."""
+    return _note_row(db, note)
+
+
+def _note_row(db: DbSession, note: Note) -> dict:
+    assignee = db.get(User, note.assignee_id) if note.assignee_id else None
+    return note_row(note, assignee_name=assignee.display_name if assignee else None)
 
 
 def remove_note(

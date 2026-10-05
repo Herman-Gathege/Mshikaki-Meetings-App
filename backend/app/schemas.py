@@ -167,6 +167,15 @@ class NoteCreateRequest(BaseModel):
     agenda_item_id: uuid.UUID | None = None
 
 
+class NoteUpdateRequest(BaseModel):
+    """Editing a note, giving it to somebody, or saying where it got to."""
+
+    body: str | None = Field(default=None, max_length=2000)
+    status: str | None = Field(default=None, max_length=16)
+    assignee_id: uuid.UUID | None = None
+    clear_assignee: bool = False
+
+
 class TaskUpdateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     description: str | None = None

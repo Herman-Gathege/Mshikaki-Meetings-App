@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.deps import ContextDep, DbDep, ensure_can, require_capability
 from app.domain import minutes as minutes_domain
+from app.domain import naming
 from app.domain.permissions import Resource, can
 from app.errors import AppError, PermissionDeniedError
 from app.schemas import (
@@ -530,15 +531,20 @@ def regenerate_summary(
     return {"summary": snapshot, "text": summary_service.text_export(snapshot)}
 
 
-@router.get("/sessions/{session_id}/export.txt", response_class=PlainTextResponse)
+@router.get("/sessions/{session_id}/export.txt")
 def export_summary(
     session_id: uuid.UUID,
     context=ContextDep,
     db: DbSession = DbDep,  # type: ignore[assignment]
-) -> str:
+) -> PlainTextResponse:
+    """The WhatsApp text, named after the meeting when it is downloaded."""
     session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
     snapshot = session.summary_snapshot or summary_service.build_snapshot(db, session)
-    return summary_service.text_export(snapshot)
+    filename = naming.minutes_filename(session.title, session.sequence_no, "txt")
+    return PlainTextResponse(
+        content=summary_service.text_export(snapshot),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/sessions/{session_id}/minutes.html", response_class=HTMLResponse)
@@ -559,7 +565,7 @@ def download_minutes(
         team_name=context.team.name,
         reference=f"MSHIKAKI-{session.sequence_no}-{str(session.id)[:8]}",
     )
-    filename = f"minutes-{session.sequence_no}.html"
+    filename = naming.minutes_filename(session.title, session.sequence_no, "html")
     return HTMLResponse(
         content=html,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
@@ -581,7 +587,7 @@ def summary_pdf(
         team_name=context.team.name,
         reference=f"MSHIKAKI-{session.sequence_no}-{str(session.id)[:8]}",
     )
-    filename = f"minutes-{session.sequence_no}.pdf"
+    filename = naming.minutes_filename(session.title, session.sequence_no, "pdf")
     return Response(
         content=content,
         media_type="application/pdf",

@@ -14,11 +14,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
 from app.db.models import (
+    Activity,
     Blocker,
+    Comment,
     ContentPack,
     Decision,
+    GameAnswer,
     GameDefinition,
     GamePlay,
+    GameQuestion,
     GameScore,
     Guest,
     Idea,
@@ -28,6 +32,8 @@ from app.db.models import (
     XpEvent,
 )
 from app.db.models import Session as MeetingSession
+from app.domain import activity as activity_domain
+from app.domain import quiz as quiz_rules
 from app.domain import summary as summary_domain
 from app.domain.enums import IdeaStatus, TaskStatus
 from app.services.activity import record_activity
@@ -81,10 +87,106 @@ def _games(db: DbSession, session_id) -> list[dict]:
                 "standings": [
                     {"name": score.player_name, "points": score.points} for score in scores
                 ],
+                "rounds": _rounds(db, play),
                 "status": play.status,
             }
         )
     return rows
+
+
+def _rounds(db: DbSession, play: GamePlay) -> list[dict]:
+    """One line per question: what was asked, what was right, who took it."""
+    order = play.question_order or []
+    rows: list[dict] = []
+    for index, question_id in enumerate(order):
+        question = db.get(GameQuestion, uuid.UUID(str(question_id)))
+        if question is None:
+            continue
+        answers = list(
+            db.execute(
+                select(GameAnswer).where(
+                    GameAnswer.game_play_id == play.id,
+                    GameAnswer.question_id == question.id,
+                )
+            ).scalars()
+        )
+        if not answers:
+            continue
+        rows.append(
+            {
+                "number": index + 1,
+                "prompt": question.prompt,
+                "answer": question.answer,
+                "winners": quiz_rules.round_winners(
+                    [
+                        {
+                            "name": row.player_name,
+                            "points": row.points_awarded,
+                            "submitted_at": row.submitted_at,
+                        }
+                        for row in answers
+                    ]
+                ),
+                "answered": len(answers),
+            }
+        )
+    return rows
+
+
+def _comments(db: DbSession, session: MeetingSession) -> list[dict]:
+    """What people said on the ideas, decisions and tasks of this meeting."""
+    targets: list[tuple[str, uuid.UUID, str]] = []
+    for idea in db.execute(
+        select(Idea).where(Idea.session_id == session.id, Idea.deleted_at.is_(None))
+    ).scalars():
+        targets.append(("idea", idea.id, idea.title))
+    for decision in db.execute(
+        select(Decision).where(Decision.session_id == session.id, Decision.deleted_at.is_(None))
+    ).scalars():
+        targets.append(("decision", decision.id, decision.statement))
+    for task in _tasks(db, session.id):
+        targets.append(("task", task.id, task.title))
+
+    rows: list[dict] = []
+    for target_type, target_id, title in targets:
+        comments = db.execute(
+            select(Comment)
+            .where(
+                Comment.target_type == target_type,
+                Comment.target_id == target_id,
+                Comment.deleted_at.is_(None),
+            )
+            .order_by(Comment.created_at)
+        ).scalars()
+        for comment in comments:
+            rows.append(
+                {
+                    "about": title,
+                    "on": target_type,
+                    "author": comment.author_name,
+                    "body": comment.body,
+                    "at": comment.created_at.isoformat() if comment.created_at else None,
+                }
+            )
+    return rows
+
+
+def _trail(db: DbSession, session: MeetingSession, *, limit: int = 40) -> list[dict]:
+    """Who did what, in order. The same sentences the Activity page shows."""
+    rows = db.execute(
+        select(Activity)
+        .where(Activity.session_id == session.id)
+        .order_by(Activity.occurred_at.asc(), Activity.id.asc())
+        .limit(limit)
+    ).scalars()
+    return [
+        {
+            "at": row.occurred_at.isoformat() if row.occurred_at else None,
+            "who": row.actor_name,
+            "what": activity_domain.full_sentence(row.actor_name, row.verb, row.payload),
+        }
+        for row in rows
+    ]
 
 
 def _tasks(db: DbSession, session_id) -> list[Task]:
@@ -261,6 +363,8 @@ def build_snapshot(db: DbSession, session: MeetingSession) -> dict:
         xp_awards=awards,
         agenda=agenda_rows,
         notes=notes,
+        comments=_comments(db, session),
+        trail=_trail(db, session),
         generated_at=datetime.now(timezone.utc),
     )
 

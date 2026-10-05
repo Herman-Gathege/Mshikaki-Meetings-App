@@ -34,6 +34,8 @@ def build_summary(
     xp_awards: list[dict[str, Any]],
     agenda: list[dict[str, Any]] | None = None,
     notes: list[dict[str, Any]] | None = None,
+    comments: list[dict[str, Any]] | None = None,
+    trail: list[dict[str, Any]] | None = None,
     generated_at: datetime,
 ) -> dict[str, Any]:
     attendees = [p for p in participants if p.get("attended", True)]
@@ -64,6 +66,8 @@ def build_summary(
             "blockers_resolved": len(blockers_resolved),
             "notes": len(notes or []),
             "agenda_items": len(agenda or []),
+            "comments": len(comments or []),
+            "trail": len(trail or []),
         },
         "attendance": {
             "present": [p.get("name") for p in attendees],
@@ -72,6 +76,8 @@ def build_summary(
         "games": games,
         "agenda": agenda or [],
         "notes": notes or [],
+        "comments": comments or [],
+        "trail": trail or [],
         "ideas": ideas,
         "decisions": decisions,
         "tasks_created": tasks_created,
@@ -151,6 +157,25 @@ def render_text(summary: dict[str, Any]) -> str:
             due = task.get("due_date")
             suffix = f" - due {due}" if due else ""
             lines.append(f"- {task.get('title', 'untitled')} → {owner}{suffix}")
+        lines.append("")
+
+    comments = summary.get("comments") or []
+    if comments:
+        lines.append(f"*Discussion ({len(comments)})*")
+        for comment in comments:
+            lines.append(f"- {comment.get('author', 'someone')}: {comment.get('body', '')}")
+        lines.append("")
+
+    winners = [
+        (game.get("name", "Game"), round_row.get("winners") or [])
+        for game in (summary.get("games") or [])
+        for round_row in (game.get("rounds") or [])
+        if round_row.get("winners")
+    ]
+    if winners:
+        lines.append("*Round winners*")
+        for game_name, names in winners:
+            lines.append(f"- {game_name}: {', '.join(str(n) for n in names)}")
         lines.append("")
 
     notes = summary.get("notes") or []

@@ -146,6 +146,8 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     decisions = snapshot.get("decisions") or []
     tasks = snapshot.get("tasks_created") or []
     notes = snapshot.get("notes") or []
+    comments = snapshot.get("comments") or []
+    trail = snapshot.get("trail") or []
     blockers = snapshot.get("blockers") or {}
 
     style = _styles()
@@ -155,6 +157,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
     def section(title: str) -> None:
         counter["n"] += 1
         story.append(Paragraph(f"{counter['n'] - 1}. {title}", style["heading"]))
+
     # The mark sits beside the masthead, small enough to stay out of the way of
     # the document itself.
     masthead = Paragraph("MSHIKAKI MEETING MINUTES", style["title"])
@@ -230,6 +233,25 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
                 ["Game", "Winner"],
             )
         )
+        rounds = [
+            (game.get("name", "Game"), row) for game in games for row in (game.get("rounds") or [])
+        ]
+        if rounds:
+            story.append(Spacer(1, 4))
+            story.append(
+                _table(
+                    [
+                        [
+                            game_name,
+                            str(row.get("prompt") or "")[:70],
+                            row.get("answer"),
+                            ", ".join(str(n) for n in (row.get("winners") or [])) or "nobody",
+                        ]
+                        for game_name, row in rounds
+                    ],
+                    ["Game", "Question", "Correct answer", "Round winner"],
+                )
+            )
 
     section("Ideas raised")
     if ideas:
@@ -312,6 +334,32 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
             )
         )
 
+    section("Discussion")
+    if comments:
+        story.append(
+            _table(
+                [
+                    [row.get("author"), row.get("on"), row.get("about"), row.get("body")]
+                    for row in comments
+                ],
+                ["Who", "On", "About", "Comment"],
+            )
+        )
+    else:
+        story.append(Paragraph("Nothing was added in the comments.", style["muted"]))
+
+    section("Who did what")
+    if trail:
+        story.append(
+            ListFlowable(
+                [ListItem(Paragraph(_escape(step.get("what")), style["body"])) for step in trail],
+                bulletType="bullet",
+                leftIndent=14,
+            )
+        )
+    else:
+        story.append(Paragraph("No activity was recorded.", style["muted"]))
+
     section("Closing summary")
     story.append(
         _table(
@@ -322,6 +370,7 @@ def render_minutes_pdf(snapshot: dict[str, Any], *, team_name: str, reference: s
                 ["Actions created", counts.get("tasks_created", 0)],
                 ["Actions completed", counts.get("tasks_completed", 0)],
                 ["Notes kept", counts.get("notes", 0)],
+                ["Comments", counts.get("comments", 0)],
                 ["Games played", counts.get("games", 0)],
                 ["Participants", counts.get("participants", 0)],
             ],

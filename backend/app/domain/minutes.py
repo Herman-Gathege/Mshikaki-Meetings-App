@@ -75,6 +75,8 @@ def render_minutes_html(
     resolved = blockers.get("resolved") or []
     agenda = snapshot.get("agenda") or []
     notes = snapshot.get("notes") or []
+    comments = snapshot.get("comments") or []
+    trail = snapshot.get("trail") or []
     generated = snapshot.get("generated_at")
 
     parts: list[str] = []
@@ -138,6 +140,28 @@ def render_minutes_html(
             ],
         )
     )
+
+    rounds = [
+        (game.get("name", "Game"), row)
+        for game in games
+        for row in (game.get("rounds") or [])
+    ]
+    if rounds:
+        parts.append("<p><strong>Round by round</strong></p>")
+        parts.append(
+            _table(
+                ["Game", "Question", "Correct answer", "Round winner"],
+                [
+                    [
+                        game_name,
+                        str(row.get("prompt") or "")[:80],
+                        row.get("answer"),
+                        ", ".join(str(name) for name in (row.get("winners") or [])) or "nobody",
+                    ]
+                    for game_name, row in rounds
+                ],
+            )
+        )
 
     section("Ideas raised")
     parts.append(
@@ -224,6 +248,29 @@ def render_minutes_html(
     if not raised and not resolved:
         parts.append("<p class='muted'>Nothing was blocked.</p>")
 
+    section("Discussion")
+    if comments:
+        parts.append("<ul>")
+        for comment in comments:
+            parts.append(
+                f"<li><strong>{escape(str(comment.get('author') or 'Someone'))}</strong> "
+                f"on {escape(str(comment.get('on') or 'an item'))} "
+                f"&ldquo;{escape(str(comment.get('about') or ''))}&rdquo;: "
+                f"{escape(str(comment.get('body') or ''))}</li>"
+            )
+        parts.append("</ul>")
+    else:
+        parts.append("<p class='muted'>Nothing was added in the comments.</p>")
+
+    section("Who did what")
+    if trail:
+        parts.append("<ul>")
+        for step in trail:
+            parts.append(f"<li>{escape(str(step.get('what') or ''))}</li>")
+        parts.append("</ul>")
+    else:
+        parts.append("<p class='muted'>No activity was recorded.</p>")
+
     section("Closing summary")
     parts.append(
         _table(
@@ -235,6 +282,7 @@ def render_minutes_html(
                 ["Actions created", counts.get("tasks_created", 0)],
                 ["Actions completed", counts.get("tasks_completed", 0)],
                 ["Notes kept", counts.get("notes", 0)],
+                ["Comments", counts.get("comments", 0)],
                 ["Games played", counts.get("games", 0)],
                 ["Participants", counts.get("participants", 0)],
             ],

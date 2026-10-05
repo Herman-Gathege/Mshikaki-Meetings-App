@@ -181,7 +181,7 @@ export function RunModePage() {
               {data.status === "paused" ? " · paused" : ""}
             </p>
             <h1
-              className="line-clamp-2 text-xl font-semibold break-words sm:text-2xl"
+              className="line-clamp-2 text-xl font-semibold break-words sm:line-clamp-3 sm:text-2xl"
               title={data.title}
             >
               {data.title}

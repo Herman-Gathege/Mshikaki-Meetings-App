@@ -187,7 +187,9 @@ export function RunModePage() {
               {data.title}
             </h1>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-sm">
+          {/* The pills keep their shape; the row itself is allowed to shrink and
+              wrap, or it drags the whole page wider than the phone. */}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 text-sm">
             <span className="rounded-full bg-white/10 px-3 py-1 whitespace-nowrap">
               {room.data?.items.length ?? 0} in the room
             </span>
@@ -273,20 +275,20 @@ export function RunModePage() {
 
       {canDrive ? (
         <footer className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-ink-900/95 px-5 py-4 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Button
               variant="ghost"
-              className="text-white hover:bg-white/10"
+              className="whitespace-nowrap text-white hover:bg-white/10"
               disabled={!previous}
               onClick={() => previous && goToStage(previous)}
             >
               Back
             </Button>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {data.status === "paused" ? (
                 <Button
                   variant="ghost"
-                  className="text-white hover:bg-white/10"
+                  className="whitespace-nowrap text-white hover:bg-white/10"
                   onClick={() => void lifecycle.resume.mutateAsync()}
                 >
                   Resume
@@ -294,7 +296,7 @@ export function RunModePage() {
               ) : (
                 <Button
                   variant="ghost"
-                  className="text-white hover:bg-white/10"
+                  className="whitespace-nowrap text-white hover:bg-white/10"
                   onClick={() => void lifecycle.pause.mutateAsync()}
                 >
                   Pause
@@ -302,6 +304,7 @@ export function RunModePage() {
               )}
               <Button
                 size="lg"
+                className="whitespace-nowrap"
                 onClick={() => (next ? goToStage(next) : goToStage("close"))}
               >
                 {/* On the agenda the room moves item by item, so the footer must

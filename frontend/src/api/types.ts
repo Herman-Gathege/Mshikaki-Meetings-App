@@ -293,6 +293,8 @@ export interface GamePlay {
     started_at: string | null;
     revealed: boolean;
     open: boolean;
+    /** Who won this round, once the answer is out. */
+    round_winners: string[];
   } | null;
   /** The viewer's own answer to the live question. */
   you: { answer: string | null; correct: boolean | null; answered: boolean };

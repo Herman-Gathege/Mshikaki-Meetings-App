@@ -302,6 +302,21 @@ def play_state(db: DbSession, play: GamePlay, *, actor=None) -> dict:
                 if play.question_started_at
                 else None,
                 "revealed": revealed,
+                # Who won this round, once the answer is out.
+                "round_winners": (
+                    quiz_rules.round_winners(
+                        [
+                            {
+                                "name": row.player_name,
+                                "points": row.points_awarded,
+                                "submitted_at": row.submitted_at,
+                            }
+                            for row in answers
+                        ]
+                    )
+                    if revealed
+                    else []
+                ),
                 "open": quiz_rules.is_accepting_answers(
                     started_at=play.question_started_at,
                     limit=limit,
@@ -374,7 +389,12 @@ def submit_answer(
     actor,
     choice: str,
 ) -> GameAnswer:
-    """Lock in one player's answer. Answering again is a no-op, not an error."""
+    """Answer, and change your mind while the clock is still running.
+
+    A mis-tap should not cost somebody the round. Until the question is revealed
+    or the clock runs out, answering again replaces the answer. After that the
+    answer is what it is.
+    """
     if play.status != GamePlayStatus.RUNNING.value:
         raise AppError("This game has already finished.", code="game.not_running")
 
@@ -404,16 +424,23 @@ def submit_answer(
             subject,
         )
     ).scalar_one_or_none()
-    if existing is not None:
-        return existing
 
     limit = play.question_seconds or quiz_rules.DEFAULT_QUESTION_SECONDS
-    if not quiz_rules.is_accepting_answers(
+    open_now = quiz_rules.is_accepting_answers(
         started_at=play.question_started_at,
         limit=limit,
         revealed_at=play.revealed_at,
         now=_now(),
-    ):
+    )
+
+    if existing is not None:
+        if open_now:
+            existing.choice = picked
+            existing.submitted_at = _now()
+            db.flush()
+        return existing
+
+    if not open_now:
         raise AppError("Time is up for this question.", code="game.too_late")
 
     answer = GameAnswer(
@@ -427,7 +454,42 @@ def submit_answer(
     )
     db.add(answer)
     db.flush()
+    _reveal_if_the_room_is_in(db, play=play)
     return answer
+
+
+def _reveal_if_the_room_is_in(db: DbSession, *, play: GamePlay) -> None:
+    """When the last player has answered, the room does not need the host.
+
+    Waiting for a facilitator to press a button while everybody stares at a
+    finished question is the sort of small friction that makes a game feel
+    broken. The clock is still the backstop when somebody is away from their
+    phone, and the host can always skip early.
+    """
+    if play.revealed_at is not None:
+        return
+    question = current_question(db, play)
+    if question is None:
+        return
+    expected = _player_count(db, play.session_id)
+    if expected <= 0:
+        return
+    answered = int(
+        db.execute(
+            select(func.count())
+            .select_from(GameAnswer)
+            .where(
+                GameAnswer.game_play_id == play.id,
+                GameAnswer.question_id == question.id,
+            )
+        ).scalar_one()
+    )
+    if answered < expected:
+        return
+    session = db.get(MeetingSession, play.session_id)
+    if session is None:
+        return
+    reveal_question(db, play=play, session=session, actor=None, actor_name="the room")
 
 
 def reveal_question(
@@ -479,8 +541,26 @@ def reveal_question(
             row.correct_count += 1
             row.source = "auto"
             answer.points_awarded = points
+            # The trail takes plain values only; the winner is worked out from
+            # the stored answers just below.
             scored.append({"name": answer.player_name, "points": points})
         db.flush()
+
+    winners = quiz_rules.round_winners(
+        [
+            {
+                "name": row.player_name,
+                "points": row.points_awarded,
+                "submitted_at": row.submitted_at,
+            }
+            for row in db.execute(
+                select(GameAnswer).where(
+                    GameAnswer.game_play_id == play.id,
+                    GameAnswer.question_id == question.id,
+                )
+            ).scalars()
+        ]
+    )
 
     record_activity(
         db,
@@ -496,6 +576,8 @@ def reveal_question(
             "question": question.prompt[:120],
             "answer": question.answer,
             "scored": scored,
+            # Who won the round, in the immutable trail as well as on screen.
+            "winners": winners,
         },
     )
     return play

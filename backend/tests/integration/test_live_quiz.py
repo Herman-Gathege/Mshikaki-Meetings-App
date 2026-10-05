@@ -152,6 +152,124 @@ async def test_the_room_plays_the_same_live_question(
         assert "game.answer_revealed" in verbs
 
 
+async def test_an_answer_can_be_changed_until_the_clock_stops(
+    client: AsyncClient, unique_suffix: str
+) -> None:
+    """A mis-tap should not cost somebody the round."""
+    await _register(
+        client,
+        email=f"change.{unique_suffix}@kbc.co.ke",
+        name="Host",
+        team=f"Change {unique_suffix}",
+    )
+    session = (await client.post("/api/sessions", json={"title": "Changing"})).json()
+    await client.post(f"/api/sessions/{session['id']}/start")
+    invite = (await client.post("/api/team/invites", json={"role": "member"})).json()
+    mate = AsyncClient(
+        transport=client._transport,  # type: ignore[attr-defined]
+        base_url="http://test",
+        headers=dict(client.headers),
+    )
+    async with mate:
+        identity = await _register(
+            mate,
+            email=f"mate.{unique_suffix}@kbc.co.ke",
+            name="Mate",
+            team="",
+            code=invite["code"],
+        )
+        await client.post(
+            f"/api/sessions/{session['id']}/participants",
+            json={"user_id": identity["user"]["id"], "role": "participant"},
+        )
+        play = await _quiz_play(client, session["id"])
+        choices = play["question"]["choices"]
+
+        # Two people in the room, so the first answer does not end the round.
+        first = await client.post(
+            f"/api/game-plays/{play['id']}/answer", json={"choice": choices[0]}
+        )
+        assert first.json()["you"]["answer"] == choices[0]
+        assert first.json()["question"]["revealed"] is False
+
+        changed = await client.post(
+            f"/api/game-plays/{play['id']}/answer", json={"choice": choices[1]}
+        )
+        assert changed.status_code == 200
+        assert changed.json()["you"]["answer"] == choices[1], "the second answer replaces the first"
+        assert changed.json()["answered"] == {"count": 1, "of": 2}, "still one answer, not two"
+
+        # The last player answers, which closes the round.
+        await mate.post(f"/api/game-plays/{play['id']}/answer", json={"choice": choices[2]})
+        closed = (await client.get(f"/api/game-plays/{play['id']}")).json()
+        assert closed["question"]["revealed"] is True
+
+        # And after the reveal the answer is what it is.
+        late = await client.post(
+            f"/api/game-plays/{play['id']}/answer", json={"choice": choices[0]}
+        )
+        assert late.status_code == 200
+        assert late.json()["you"]["answer"] == choices[1]
+
+
+async def test_the_round_reveals_itself_when_everybody_has_answered(
+    client: AsyncClient, unique_suffix: str
+) -> None:
+    """Nobody should have to stare at a finished question waiting for a button."""
+    await _register(
+        client,
+        email=f"auto.{unique_suffix}@kbc.co.ke",
+        name="Host",
+        team=f"Auto {unique_suffix}",
+    )
+    session = (await client.post("/api/sessions", json={"title": "Auto"})).json()
+    await client.post(f"/api/sessions/{session['id']}/start")
+    invite = (await client.post("/api/team/invites", json={"role": "member"})).json()
+    player = AsyncClient(
+        transport=client._transport,  # type: ignore[attr-defined]
+        base_url="http://test",
+        headers=dict(client.headers),
+    )
+    async with player:
+        identity = await _register(
+            player,
+            email=f"player.{unique_suffix}@kbc.co.ke",
+            name="Player",
+            team="",
+            code=invite["code"],
+        )
+        await client.post(
+            f"/api/sessions/{session['id']}/participants",
+            json={"user_id": identity["user"]["id"], "role": "participant"},
+        )
+        play = await _quiz_play(client, session["id"])
+        assert play["answered"] == {"count": 0, "of": 2}
+
+        # The host answers first: the round stays open for the room.
+        first = await client.post(
+            f"/api/game-plays/{play['id']}/answer",
+            json={"choice": play["question"]["choices"][0]},
+        )
+        assert first.json()["question"]["revealed"] is False
+
+        # The last player answers: the answer shows itself, and names the round.
+        last = await player.post(
+            f"/api/game-plays/{play['id']}/answer",
+            json={"choice": play["question"]["answer"]},
+        )
+        assert last.status_code == 200, last.text
+        state = last.json()
+        assert state["question"]["revealed"] is True, "everybody has answered"
+        assert state["question"]["open"] is False
+        assert state["question"]["round_winners"] == ["Player"]
+
+        # And the round is on the record with its winner.
+        trail = (await client.get("/api/activity", params={"session_id": session["id"]})).json()
+        reveals = [item for item in trail["items"] if item["verb"] == "game.answer_revealed"]
+        assert reveals, "the reveal is recorded"
+        assert "Player" in reveals[-1]["sentence"] or "Player" in str(reveals[-1])
+
+
 async def test_answering_is_refused_when_the_question_is_closed(
     client: AsyncClient, unique_suffix: str
 ) -> None:

@@ -66,3 +66,25 @@ def points_for(*, correct: bool, elapsed_seconds: float, limit: int) -> int:
     if limit > 0 and elapsed_seconds <= limit / 2:
         return BASE_POINTS + SPEED_BONUS
     return BASE_POINTS
+
+
+def round_winners(answers: list[dict]) -> list[str]:
+    """Who won the round, decided the same way every time.
+
+    Most points that question, and because points already carry the speed bonus,
+    that also settles a tie between two right answers. A round where nobody was
+    right has no winner, which is a fact worth recording rather than inventing
+    somebody to name.
+
+    Each answer is {name, points, submitted_at}. Ties on both points and time
+    name everybody involved.
+    """
+    scored = [row for row in answers if int(row.get("points") or 0) > 0]
+    if not scored:
+        return []
+
+    best = max(int(row["points"]) for row in scored)
+    leaders = [row for row in scored if int(row["points"]) == best]
+    fastest = min(row["submitted_at"] for row in leaders)
+    winners = [row for row in leaders if row["submitted_at"] == fastest]
+    return sorted(str(row["name"]) for row in winners)

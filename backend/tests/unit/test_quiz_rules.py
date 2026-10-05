@@ -78,3 +78,28 @@ def test_points_reward_a_quick_right_answer_and_nothing_else() -> None:
     assert quiz.points_for(correct=True, elapsed_seconds=1, limit=20) == 15
     assert quiz.points_for(correct=True, elapsed_seconds=10, limit=20) == 15
     assert quiz.points_for(correct=True, elapsed_seconds=19.9, limit=20) == 10
+
+
+def test_the_round_winner_is_the_best_fastest_answer() -> None:
+    """One rule, applied the same way every round."""
+    answers = [
+        {"name": "Anne", "points": 15, "submitted_at": NOW + timedelta(seconds=3)},
+        {"name": "Brian", "points": 15, "submitted_at": NOW + timedelta(seconds=2)},
+        {"name": "David", "points": 10, "submitted_at": NOW + timedelta(seconds=1)},
+    ]
+    assert quiz.round_winners(answers) == ["Brian"]
+
+
+def test_a_dead_heat_names_everybody() -> None:
+    tie = NOW + timedelta(seconds=2)
+    assert quiz.round_winners(
+        [
+            {"name": "Anne", "points": 15, "submitted_at": tie},
+            {"name": "Brian", "points": 15, "submitted_at": tie},
+        ]
+    ) == ["Anne", "Brian"]
+
+
+def test_a_round_nobody_won_has_no_winner() -> None:
+    assert quiz.round_winners([{"name": "Anne", "points": 0, "submitted_at": NOW}]) == []
+    assert quiz.round_winners([]) == []

@@ -398,7 +398,9 @@ function PlayerScreen({ data }: { data: GamePlay }) {
   }
 
   const choices = question.choices ?? [];
-  const canAnswer = Boolean(mine) === false && !revealed && !ranOut && choices.length > 0;
+  // A mis-tap should not cost anybody the round: answering again replaces the
+  // answer until the reveal or the end of the clock.
+  const canAnswer = !revealed && !ranOut && choices.length > 0;
   const isCorrect = mine !== null && choiceMatches(mine, question.answer);
   const isLast = data.total > 0 && data.index + 1 >= data.total;
 
@@ -453,8 +455,7 @@ function PlayerScreen({ data }: { data: GamePlay }) {
 
         {mine && !revealed ? (
           <p className="mt-5 rounded-xl bg-emerald-400/15 p-3 text-lg text-emerald-200">
-            ✅ Locked in: <strong>{mine}</strong>. The clock keeps running for everybody else —
-            watch the big screen.
+            ✅ Locked in: <strong>{mine}</strong>. You can change it until the clock stops.
           </p>
         ) : null}
         {!mine && ranOut && !revealed ? (
@@ -470,6 +471,11 @@ function PlayerScreen({ data }: { data: GamePlay }) {
             <p className="text-xl">
               The answer: <strong>{question.answer ?? "—"}</strong>
             </p>
+            {question.round_winners.length ? (
+              <p className="text-lg text-ember-500">
+                🏆 {question.round_winners.join(" and ")} took the round
+              </p>
+            ) : null}
             {question.explanation ? <p className="text-white/70">{question.explanation}</p> : null}
             {!isLast ? (
               <p className="text-white/60">Waiting for the next question…</p>
@@ -607,6 +613,11 @@ function HostScreen({ data }: { data: GamePlay }) {
               <p className="text-2xl font-semibold">The answer</p>
               <p className="text-xl">
                 <strong>{question.answer}</strong>
+              </p>
+              <p className="text-lg text-ember-500">
+                {question.round_winners.length
+                  ? `🏆 ${question.round_winners.join(" and ")} took the round`
+                  : "Nobody had it this round"}
               </p>
               {question.explanation ? (
                 <p className="text-white/70">{question.explanation}</p>

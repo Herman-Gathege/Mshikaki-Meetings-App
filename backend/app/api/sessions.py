@@ -21,6 +21,8 @@ from app.schemas import (
     NoteCreateRequest,
     NoteUpdateRequest,
     ParticipantRequest,
+    QuestionCreateRequest,
+    QuestionUpdateRequest,
     ReopenRequest,
     RunModeStageRequest,
     SessionCreateRequest,
@@ -28,6 +30,7 @@ from app.schemas import (
 )
 from app.services import activity as activity_service
 from app.services import meetings, minutes_pdf
+from app.services import questions as question_service
 from app.services import summary as summary_service
 
 router = APIRouter(tags=["sessions"])
@@ -251,9 +254,7 @@ def join_the_meeting(
     """
     session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
     ensure_can(context.actor, "session.join.self", session_resource(context, session))
-    meetings.join_session(
-        db, session=session, actor=context.actor, actor_name=context.name
-    )
+    meetings.join_session(db, session=session, actor=context.actor, actor_name=context.name)
     return meetings.session_detail(db, session)
 
 
@@ -524,6 +525,83 @@ def remove_note(
         db, session=session, note_id=note_id, actor=context.actor, actor_name=context.name
     )
     return {"items": meetings.list_notes(db, session=session)}
+
+
+@router.get("/sessions/{session_id}/questions")
+def list_questions(
+    session_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """The questions the room has written for this meeting."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    return {"items": question_service.list_questions(db, session=session)}
+
+
+@router.post("/sessions/{session_id}/questions")
+def suggest_question(
+    session_id: uuid.UUID,
+    payload: QuestionCreateRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    """Anybody in the room can put a question on the table."""
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "question.suggest", session_resource(context, session))
+    question = question_service.suggest_question(
+        db,
+        session=session,
+        prompt=payload.prompt,
+        choices=payload.choices,
+        answer=payload.answer,
+        agenda_item_id=payload.agenda_item_id,
+        actor=context.actor,
+        actor_name=context.name,
+    )
+    return question_service.question_row(question)
+
+
+@router.patch("/sessions/{session_id}/questions/{question_id}")
+def update_question(
+    session_id: uuid.UUID,
+    question_id: uuid.UUID,
+    payload: QuestionUpdateRequest,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "question.manage", session_resource(context, session))
+    question = question_service.update_question(
+        db,
+        session=session,
+        question_id=question_id,
+        actor=context.actor,
+        actor_name=context.name,
+        prompt=payload.prompt,
+        choices=payload.choices,
+        answer=payload.answer,
+        status=payload.status,
+    )
+    return question_service.question_row(question)
+
+
+@router.delete("/sessions/{session_id}/questions/{question_id}")
+def remove_question(
+    session_id: uuid.UUID,
+    question_id: uuid.UUID,
+    context=ContextDep,
+    db: DbSession = DbDep,  # type: ignore[assignment]
+) -> dict:
+    session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    ensure_can(context.actor, "question.manage", session_resource(context, session))
+    question_service.remove_question(
+        db,
+        session=session,
+        question_id=question_id,
+        actor=context.actor,
+        actor_name=context.name,
+    )
+    return {"items": question_service.list_questions(db, session=session)}
 
 
 @router.get("/sessions/{session_id}/summary")

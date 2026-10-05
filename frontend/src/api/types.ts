@@ -117,6 +117,21 @@ export interface Note {
   edited: boolean;
 }
 
+/** A question somebody in the room thought of, during the meeting. */
+export type QuestionStatus = "suggested" | "accepted" | "used" | "rejected";
+
+export interface SessionQuestion {
+  id: string;
+  prompt: string;
+  choices: string[];
+  answer: string | null;
+  status: QuestionStatus;
+  author: string;
+  agenda_item_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 /** A note stays a note, but it can say where it got to. */
 export type NoteStatus = "open" | "pending" | "done" | "backlog";
 

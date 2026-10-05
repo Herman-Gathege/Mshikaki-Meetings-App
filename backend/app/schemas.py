@@ -176,6 +176,22 @@ class NoteUpdateRequest(BaseModel):
     clear_assignee: bool = False
 
 
+class QuestionCreateRequest(BaseModel):
+    """A question somebody in the room thought of."""
+
+    prompt: str = Field(min_length=3, max_length=500)
+    choices: list[str] = Field(default_factory=list)
+    answer: str | None = Field(default=None, max_length=300)
+    agenda_item_id: uuid.UUID | None = None
+
+
+class QuestionUpdateRequest(BaseModel):
+    prompt: str | None = Field(default=None, max_length=500)
+    choices: list[str] | None = None
+    answer: str | None = Field(default=None, max_length=300)
+    status: str | None = Field(default=None, max_length=16)
+
+
 class TaskUpdateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     description: str | None = None
@@ -215,6 +231,8 @@ class PlayCreateRequest(BaseModel):
     game_key: str
     content_pack_id: uuid.UUID | None = None
     settings: dict = Field(default_factory=dict)
+    # Play the questions this meeting wrote, rather than a library pack.
+    use_session_questions: bool = False
 
 
 class ScoreAwardRequest(BaseModel):

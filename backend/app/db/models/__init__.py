@@ -20,6 +20,7 @@ from app.db.models.games import (
     GamePlay,
     GameQuestion,
     GameScore,
+    SessionQuestion,
 )
 from app.db.models.identity import (
     AuthSession,
@@ -57,6 +58,7 @@ __all__ = [
     "GamePlay",
     "GameQuestion",
     "GameScore",
+    "SessionQuestion",
     "Guest",
     "Idea",
     "IdeaTag",

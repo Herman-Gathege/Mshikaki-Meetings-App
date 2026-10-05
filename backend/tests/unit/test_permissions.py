@@ -142,6 +142,12 @@ CASES: list[tuple[str, Actor, Resource, bool]] = [
     ("note.create", MEMBER, CLOSED_SESSION, False),
     ("note.delete.any", FACILITATOR, OPEN_SESSION_MINE, True),
     ("note.delete.any", MEMBER, OPEN_SESSION_MINE, False),
+    # Questions the room writes during the meeting.
+    ("question.suggest", MEMBER, OPEN_SESSION_MINE, True),
+    ("question.suggest", GUEST, OPEN_SESSION_MINE, True),
+    ("question.suggest", MEMBER, CLOSED_SESSION, False),
+    ("question.manage", FACILITATOR, OPEN_SESSION_MINE, True),
+    ("question.manage", MEMBER, OPEN_SESSION_MINE, False),
     # Anybody in the team may put themselves in a meeting that is running.
     ("session.join.self", MEMBER, OPEN_SESSION_MINE, True),
     ("session.join.self", FACILITATOR, OPEN_SESSION_MINE, True),

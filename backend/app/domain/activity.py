@@ -79,6 +79,18 @@ VERBS: dict[str, VerbSpec] = {
         visibility=ActivityVisibility.PARTICIPANTS.value,
     ),
     "note.removed": V("note.removed", "removed a note"),
+    # Questions the room writes during the meeting
+    "question.suggested": V(
+        "question.suggested",
+        'suggested a question: "{prompt}"',
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
+    "question.updated": V(
+        "question.updated",
+        "changed a question ({changes})",
+        visibility=ActivityVisibility.PARTICIPANTS.value,
+    ),
+    "question.removed": V("question.removed", "removed a question"),
     # Games
     "game.started": V(
         "game.started", 'started "{game}"', visibility=ActivityVisibility.PARTICIPANTS.value

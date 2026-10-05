@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session as DbSession
 from app.deps import ContextDep, DbDep, ensure_can, require_capability
 from app.domain.permissions import Resource
 from app.schemas import AnswerRequest, PlayCreateRequest, ScoreAwardRequest, ScoreOverrideRequest
-from app.services import games, meetings
+from app.services import games, meetings, questions
 
 router = APIRouter(tags=["games"])
 
@@ -46,13 +46,20 @@ def start_play(
     db: DbSession = DbDep,  # type: ignore[assignment]
 ) -> dict:
     session = meetings.get_session(db, team_id=context.team.id, session_id=session_id)
+    pack_id = payload.content_pack_id
+    if payload.use_session_questions:
+        # The room's own questions become the pack this game plays.
+        pack = questions.pack_for_session(
+            db, session=session, actor=context.actor, actor_name=context.name
+        )
+        pack_id = pack.id
     play = games.create_play(
         db,
         session=session,
         actor=context.actor,
         actor_name=context.name,
         game_key=payload.game_key,
-        pack_id=payload.content_pack_id,
+        pack_id=pack_id,
         settings=payload.settings,
     )
     return games.play_state(db, play, actor=context.actor)

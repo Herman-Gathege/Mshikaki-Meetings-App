@@ -26,8 +26,12 @@ import {
   useRecordDecision,
   useSession,
   useSessionLifecycle,
+  useDeleteQuestion,
   useSessionNotes,
   useSessionParticipants,
+  useSessionQuestions,
+  useSuggestQuestion,
+  useUpdateQuestion,
   useUpdateNote,
   useStartPlay,
   useTasks,
@@ -543,6 +547,27 @@ function PlayStep({ session, canDrive }: { session: SessionDetail; canDrive: boo
         </div>
       </div>
 
+      <div className="mt-5 rounded-xl border border-white/15 bg-white/5 p-4">
+        <p className="text-lg font-semibold">❓ Play the room's questions</p>
+        <p className="mt-1 text-sm text-white/70">
+          Uses the questions people added during this meeting.
+        </p>
+        <Button
+          size="lg"
+          variant="secondary"
+          className="mt-3"
+          disabled={startPlay.isPending}
+          onClick={() =>
+            void startPlay
+              .mutateAsync({ game_key: "trivia-general", use_session_questions: true })
+              .then((play) => navigate(`/play/${play.id}`))
+              .catch(() => toast("The room has not written any questions yet"))
+          }
+        >
+          Play their questions
+        </Button>
+      </div>
+
       <h3 className="mt-8 text-lg font-semibold text-white/80">Or pick the game yourself</h3>
 
       {running ? (
@@ -655,6 +680,11 @@ function AgendaStep({
   const addNote = useSessionNotes(session.id);
   const deleteNote = useDeleteNote(session.id);
   const updateNote = useUpdateNote(session.id);
+  const updateIdea = useUpdateIdea();
+  const questions = useSessionQuestions(session.id);
+  const suggestQuestion = useSuggestQuestion(session.id);
+  const updateQuestion = useUpdateQuestion(session.id);
+  const deleteQuestion = useDeleteQuestion(session.id);
   const record = useRecordDecision();
   const createTask = useCreateTask();
   const participants = useSessionParticipants(session.id);
@@ -662,8 +692,13 @@ function AgendaStep({
   const tasks = useTasks({ session_id: session.id });
   const decisions = useDecisions({ session_id: session.id });
 
-  const [panel, setPanel] = useState<"note" | "decide" | "action" | null>("note");
+  const [panel, setPanel] = useState<"note" | "decide" | "action" | "question" | null>("note");
   const [note, setNote] = useState("");
+  const [questionPrompt, setQuestionPrompt] = useState("");
+  const [questionChoices, setQuestionChoices] = useState("");
+  const [questionAnswer, setQuestionAnswer] = useState("");
+  const [decisionIdeaId, setDecisionIdeaId] = useState("");
+  const [actionIdeaId, setActionIdeaId] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
   const [statement, setStatement] = useState("");
@@ -768,6 +803,13 @@ function AgendaStep({
 
         <div className="mt-6 flex flex-wrap gap-2">
           <Button
+            variant={panel === "question" ? "primary" : "ghost"}
+            className={panel === "question" ? "" : "text-white hover:bg-white/10"}
+            onClick={() => setPanel(panel === "question" ? null : "question")}
+          >
+            ❓ Add a question
+          </Button>
+          <Button
             variant={panel === "note" ? "primary" : "ghost"}
             className={panel === "note" ? "" : "text-white hover:bg-white/10"}
             onClick={() => setPanel(panel === "note" ? null : "note")}
@@ -796,6 +838,110 @@ function AgendaStep({
             💡 Add an idea
           </Button>
         </div>
+
+        {panel === "question" ? (
+          <div className="mt-4 rounded-xl bg-white/5 p-4">
+            <p className="text-sm text-white/60">
+              Anybody can add one. Accepted questions can be played straight away.
+            </p>
+            <div className="mt-3 space-y-3">
+              <Field label="The question">
+                <Input
+                  className="bg-white text-ink-900"
+                  value={questionPrompt}
+                  placeholder="Which studio opened first?"
+                  onChange={(event) => setQuestionPrompt(event.target.value)}
+                />
+              </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Options" hint="Comma separated, optional.">
+                  <Input
+                    className="bg-white text-ink-900"
+                    value={questionChoices}
+                    placeholder="A, B, C, D"
+                    onChange={(event) => setQuestionChoices(event.target.value)}
+                  />
+                </Field>
+                <Field label="Right answer" hint="Optional, for a scored question.">
+                  <Input
+                    className="bg-white text-ink-900"
+                    value={questionAnswer}
+                    placeholder="A"
+                    onChange={(event) => setQuestionAnswer(event.target.value)}
+                  />
+                </Field>
+              </div>
+              <Button
+                size="lg"
+                disabled={questionPrompt.trim().length < 3 || suggestQuestion.isPending}
+                onClick={() =>
+                  void suggestQuestion
+                    .mutateAsync({
+                      prompt: questionPrompt.trim(),
+                      choices: questionChoices
+                        .split(",")
+                        .map((choice) => choice.trim())
+                        .filter(Boolean),
+                      answer: questionAnswer.trim() || undefined,
+                      agenda_item_id: item.id,
+                    })
+                    .then(() => {
+                      setQuestionPrompt("");
+                      setQuestionChoices("");
+                      setQuestionAnswer("");
+                      toast("❓ Question added");
+                    })
+                }
+              >
+                {suggestQuestion.isPending ? "Adding..." : "Add the question"}
+              </Button>
+            </div>
+
+            <ul className="mt-4 space-y-2">
+              {(questions.data?.items ?? []).map((row) => (
+                <li key={row.id} className="rounded-lg bg-white/5 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <span>
+                      {row.prompt}
+                      {row.answer ? (
+                        <span className="ml-2 text-xs text-white/50">answer: {row.answer}</span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-white/50">
+                      {row.author} · {row.status}
+                    </span>
+                  </div>
+                  {canDrive ? (
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {["accepted", "rejected"].map((next) => (
+                        <button
+                          key={next}
+                          type="button"
+                          className="rounded-full bg-white/10 px-2 py-1 text-white/70 hover:bg-white/20"
+                          onClick={() =>
+                            void updateQuestion.mutateAsync({ questionId: row.id, status: next })
+                          }
+                        >
+                          {next}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="rounded-full bg-white/10 px-2 py-1 text-white/50 hover:bg-white/20"
+                        onClick={() => void deleteQuestion.mutateAsync(row.id)}
+                      >
+                        remove
+                      </button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+              {(questions.data?.items ?? []).length === 0 ? (
+                <li className="text-sm text-white/50">No questions from the room yet.</li>
+              ) : null}
+            </ul>
+          </div>
+        ) : null}
 
         {panel === "note" ? (
           <div className="mt-4 rounded-xl bg-white/5 p-4">
@@ -847,6 +993,22 @@ function AgendaStep({
 
         {panel === "decide" && canDrive ? (
           <div className="mt-4 rounded-xl bg-white/5 p-4">
+            {itemIdeas.length ? (
+              <Field label="About which idea?" hint="Optional. It keeps the trail connected.">
+                <Select
+                  className="bg-white text-ink-900"
+                  value={decisionIdeaId}
+                  onChange={(event) => setDecisionIdeaId(event.target.value)}
+                >
+                  <option value="">Not about one idea</option>
+                  {itemIdeas.map((idea) => (
+                    <option key={idea.id} value={idea.id}>
+                      {idea.title}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
             <Field label="The decision" hint="One sentence. The room hears what was agreed.">
               <Input
                 className="bg-white text-ink-900"
@@ -865,9 +1027,11 @@ function AgendaStep({
                     statement: statement.trim(),
                     session_id: session.id,
                     agenda_item_id: item.id,
+                    idea_id: decisionIdeaId || undefined,
                   })
                   .then(() => {
                     setStatement("");
+                    setDecisionIdeaId("");
                     toast("🧠 Decision recorded");
                   })
               }
@@ -882,6 +1046,22 @@ function AgendaStep({
             <p className="text-sm text-white/60">
               Only if it needs doing. One owner, one action. No action is a fine outcome.
             </p>
+            {itemIdeas.length ? (
+              <Field label="Because of which idea?" hint="Optional.">
+                <Select
+                  className="bg-white text-ink-900"
+                  value={actionIdeaId}
+                  onChange={(event) => setActionIdeaId(event.target.value)}
+                >
+                  <option value="">Nothing in particular</option>
+                  {itemIdeas.map((idea) => (
+                    <option key={idea.id} value={idea.id}>
+                      {idea.title}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div className="sm:col-span-2">
                 <Field label="What needs to happen?">
@@ -920,9 +1100,11 @@ function AgendaStep({
                     status: "in_progress",
                     session_id: session.id,
                     agenda_item_id: item.id,
+                    idea_id: actionIdeaId || undefined,
                   })
                   .then(() => {
                     setAction("");
+                    setActionIdeaId("");
                     toast("🎯 Action assigned");
                   })
               }
@@ -1069,7 +1251,30 @@ function AgendaStep({
               <ul className="mt-2 space-y-2">
                 {itemIdeas.map((idea) => (
                   <li key={idea.id} className="rounded-xl bg-white/5 p-3">
-                    💡 {idea.title}
+                    <div className="flex items-start justify-between gap-2">
+                      <span>💡 {idea.title}</span>
+                      <span className="shrink-0 text-xs text-white/60">{idea.status}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {["discussing", "accepted", "parked", "rejected"].map((next) => (
+                        <button
+                          key={next}
+                          type="button"
+                          disabled={idea.status === next}
+                          className={cn(
+                            "rounded-full px-2 py-1",
+                            idea.status === next
+                              ? "bg-ember-500/30 text-white"
+                              : "bg-white/10 text-white/70 hover:bg-white/20",
+                          )}
+                          onClick={() =>
+                            void updateIdea.mutateAsync({ id: idea.id, status: next })
+                          }
+                        >
+                          {next}
+                        </button>
+                      ))}
+                    </div>
                   </li>
                 ))}
                 {itemDecisions.map((decision) => (

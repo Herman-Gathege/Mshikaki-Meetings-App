@@ -43,6 +43,7 @@ import type {
   TaskDetail,
   TeamInfo,
   Note,
+  SessionQuestion,
   Today,
 } from "@/api/types";
 
@@ -301,6 +302,62 @@ export function useSessionNotes(sessionId: string) {
     mutationFn: (payload: { body: string; agenda_item_id?: string | null }) =>
       apiFetch<Note>(`/sessions/${sessionId}/notes`, { method: "POST", json: payload }),
     onSuccess: () => invalidate(["sessions", "activity"]),
+  });
+}
+
+/** Questions the room writes during the meeting. */
+export function useSessionQuestions(sessionId: string) {
+  return useQuery({
+    queryKey: ["session-questions", sessionId],
+    queryFn: () => apiFetch<Items<SessionQuestion>>(`/sessions/${sessionId}/questions`),
+    refetchInterval: 8000,
+  });
+}
+
+export function useSuggestQuestion(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payload: {
+      prompt: string;
+      choices?: string[];
+      answer?: string;
+      agenda_item_id?: string | null;
+    }) => apiFetch<SessionQuestion>(`/sessions/${sessionId}/questions`, { method: "POST", json: payload }),
+    onSuccess: () => invalidate(["session-questions", "sessions", "activity"]),
+  });
+}
+
+export function useUpdateQuestion(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payload: {
+      questionId: string;
+      prompt?: string;
+      choices?: string[];
+      answer?: string;
+      status?: string;
+    }) =>
+      apiFetch<SessionQuestion>(`/sessions/${sessionId}/questions/${payload.questionId}`, {
+        method: "PATCH",
+        json: {
+          prompt: payload.prompt,
+          choices: payload.choices,
+          answer: payload.answer,
+          status: payload.status,
+        },
+      }),
+    onSuccess: () => invalidate(["session-questions", "sessions", "activity"]),
+  });
+}
+
+export function useDeleteQuestion(sessionId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (questionId: string) =>
+      apiFetch<Items<SessionQuestion>>(`/sessions/${sessionId}/questions/${questionId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => invalidate(["session-questions", "sessions", "activity"]),
   });
 }
 
@@ -719,8 +776,11 @@ export function useContentPacks(family?: string) {
 export function useStartPlay(sessionId: string) {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (payload: { game_key: string; content_pack_id?: string }) =>
-      apiFetch<GamePlay>(`/sessions/${sessionId}/games`, { method: "POST", json: payload }),
+    mutationFn: (payload: {
+      game_key: string;
+      content_pack_id?: string;
+      use_session_questions?: boolean;
+    }) => apiFetch<GamePlay>(`/sessions/${sessionId}/games`, { method: "POST", json: payload }),
     onSuccess: () => invalidate(["sessions", "games", "activity"]),
   });
 }

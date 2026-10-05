@@ -223,3 +223,39 @@ class GameAnswer(UuidPk, Timestamps, Base):
     points_awarded: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     play: Mapped[GamePlay] = relationship(back_populates="answers")
+
+class SessionQuestion(UuidPk, Timestamps, SoftDelete, Base):
+    """A question somebody in the room thought of, during the meeting.
+
+    The game library belongs to the team; this belongs to one meeting. The room
+    writes questions as they occur to them, everybody sees them, and the ones
+    that are accepted can be played straight away instead of waiting for
+    somebody to edit a content file.
+    """
+
+    __tablename__ = "session_questions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('suggested', 'accepted', 'used', 'rejected')",
+            name="status_valid",
+        ),
+        Index("ix_session_questions_session", "session_id"),
+    )
+
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("teams.id", ondelete="RESTRICT"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    agenda_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("agenda_items.id", ondelete="SET NULL"), nullable=True
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    author_name: Mapped[str] = mapped_column(String(120), default="Someone", nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    choices: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="suggested", nullable=False)

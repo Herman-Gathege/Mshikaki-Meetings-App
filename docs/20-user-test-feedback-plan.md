@@ -45,6 +45,8 @@ Postgres. Socket.io also has a wrinkle: the server is Python, so it would be
 a dropped socket cannot strand the room. C is not worth it here. A is what we
 have, and it is honest to say the room may feel a beat behind.
 
+answer: yes move with option A  (built: polling kept, nothing else added)
+
 ### D2. Are notes becoming tasks? (item 7)
 
 An assignable note with a status is most of a task. Two readings of your ask:
@@ -60,6 +62,8 @@ An assignable note with a status is most of a task. Two readings of your ask:
 minutes, and only the meeting's own record shows it. If you would rather keep one
 kind of work, say so and we do B.
 
+answer: yes move with option A
+
 ### D3. Scope of adding questions (item 9)
 
 Two shapes:
@@ -73,6 +77,8 @@ Two shapes:
 has `created_by`, `license`, `attribution`) by adding a nullable `team_id`, so
 seed packs stay global and a team's own packs are theirs. Same screens, and the
 questions do not die with the meeting.
+
+answer: i want joiners to add questions during the sessiona and everyone sees them then actions similar to notes and ideas
 
 ## The plan
 
@@ -144,3 +150,40 @@ screens and in the minutes.
 | Run Mode's release logic has careful guards | A wrong guard bounces the facilitator mid-meeting | Add the read-only review as a separate branch, and keep the existing tests green |
 | Adding `team_id` to content packs | Seed packs are global today | Nullable column, `NULL` means global, and the seeder keeps writing global packs |
 | Realtime changes the deployment story | One container is a selling point | Only if C3 is chosen, mounted on the existing app, with polling kept as the fallback |
+
+
+then the minutes files should be named from the heading of the mshikaki the input box called (What are we calling it?) 
+---
+
+## Built, and verified on the deployment (5 October 2026)
+
+All twelve items are implemented except the one that was decided against, and
+everything below was exercised against `172.16.1.36:8090` rather than only in
+tests.
+
+| # | Item | What was done | Evidence |
+|---|---|---|---|
+| 1 | Realtime | **Decided: keep polling** (option A). No socket.io, as the owner chose | polling intervals unchanged |
+| 2 | Reveal when the room is in | The last answer ends the round by itself; the host can still skip; the clock is the backstop | two-person room: the answer revealed itself, `revealedWithoutHost: true` |
+| 3 | Change your answer | Answering again replaces the answer while the question is open, and not after | `A` then `B`, one answer recorded, refused after the reveal |
+| 4 | @ from the joiner list | Naming somebody in a note gives it to them; the composer offers the room's names as taps; the longest name wins | `@Herman` resolved to Herman and became the owner |
+| 5 | Notes with work | Edit, assign, and mark open / pending / done / backlog; the trail records the edit; the minutes show owner and state | note edited, owned, marked `pending`, `note.updated` on the trail |
+| 6 | Existing account joining | `POST /sessions/{id}/join` counts them; the join page recognises a known account; sign-in returns to the meeting | Anne joined without a second account; the room showed Anne and Herman |
+| 7 | Questions in the session | Anybody in the room can add a question during the meeting, everyone sees it, the facilitator accepts or rejects, and accepted ones play through the existing engine | a joiner suggested two, both visible, joiner refused (403), played: `total: 2` |
+| 8 | Round winner | Most points that question, ties to the fastest, dead heats name both, nobody right means no winner. Written into the reveal record | `roundWinners: ["Anne"]` |
+| 9 | Ideas and the minutes | Accept / park / reject from the meeting; a decision can name the idea it settles and an action the idea it came from. Minutes gained Discussion, Who did what and round winners | idea accepted in the meeting; minutes contain Discussion, the trail and the winners |
+| 10 | Previous agenda item | Item chips and a Previous button let the facilitator go back; covering an item still stands | moved to item 2, went back to item 1 |
+| 11 | Completed session | A finished meeting opens as a read-only record: counts, each item with how it ended, what came out of it, and the minutes and PDF | "MEETING RECORD" with the agenda, the note, and the downloads |
+| 12 | Filenames | Downloads are named from the title in "What are we calling it?" | `innovations-weekly-session-2lfdg-minutes.pdf` |
+
+Tested: 194 backend tests (join with an existing account, notes with owners and
+states, mentions including the longest-name and dead-@ cases, questions from the
+room, the round winner rule, the naming rule), frontend typecheck, tests and a
+production build, and the twelve items above driven end to end against the
+deployed app.
+
+### One consequence worth knowing
+
+Auto-reveal means a room of one closes the round on the first answer. In a real
+meeting somebody else's answer is what ends it, which is the point, but a
+facilitator testing alone will see the round end as soon as they tap.

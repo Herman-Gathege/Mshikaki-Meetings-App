@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 pytestmark = pytest.mark.asyncio
 
@@ -69,7 +69,7 @@ async def test_a_note_can_be_given_to_somebody_by_naming_them(
     client: AsyncClient, unique_suffix: str
 ) -> None:
     room = await _room(client, unique_suffix)
-    async with _anne(room) as anne:
+    async with _anne(room) as anne:  # noqa: F841 - the client is the point of the context
         note = (
             await anne.post(
                 f"/api/sessions/{room['session']['id']}/notes",
@@ -88,7 +88,7 @@ async def test_a_note_can_be_edited_assigned_and_marked(
     client: AsyncClient, unique_suffix: str
 ) -> None:
     room = await _room(client, unique_suffix)
-    async with _anne(room) as anne:
+    async with _anne(room) as anne:  # noqa: F841 - the client is the point of the context
         note = (
             await client.post(
                 f"/api/sessions/{room['session']['id']}/notes",
@@ -127,7 +127,7 @@ async def test_a_note_can_be_edited_assigned_and_marked(
 
 async def test_editing_a_note_is_on_the_trail(client: AsyncClient, unique_suffix: str) -> None:
     room = await _room(client, unique_suffix)
-    async with _anne(room) as anne:
+    async with _anne(room) as anne:  # noqa: F841 - the client is the point of the context
         note = (
             await client.post(
                 f"/api/sessions/{room['session']['id']}/notes",
@@ -146,7 +146,7 @@ async def test_the_room_a_note_can_be_given_to_is_the_joiner_list(
     client: AsyncClient, unique_suffix: str
 ) -> None:
     room = await _room(client, unique_suffix)
-    async with _anne(room) as anne:
+    async with _anne(room) as anne:  # noqa: F841 - the client is the point of the context
         listed = (await client.get(f"/api/sessions/{room['session']['id']}/participants")).json()
         names = sorted(row["name"] for row in listed["items"])
         assert names == ["Anne", "Herman"]

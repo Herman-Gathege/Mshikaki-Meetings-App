@@ -171,26 +171,34 @@ export function RunModePage() {
   return (
     <div className="min-h-dvh bg-ink-900 pb-24 text-white">
       <header className="border-b border-white/10 px-5 py-4">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          {/* The title takes the width it can and no more: a long meeting name
+              must not push the room's counters off the screen or grow the
+              header over the meeting itself. */}
+          <div className="min-w-0 flex-1">
             <p className="text-xs tracking-widest text-white/50 uppercase">
               Run Mode
               {data.status === "paused" ? " · paused" : ""}
             </p>
-            <h1 className="text-2xl font-semibold">{data.title}</h1>
+            <h1
+              className="line-clamp-2 text-xl font-semibold break-words sm:text-2xl"
+              title={data.title}
+            >
+              {data.title}
+            </h1>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="rounded-full bg-white/10 px-3 py-1">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-sm">
+            <span className="rounded-full bg-white/10 px-3 py-1 whitespace-nowrap">
               {room.data?.items.length ?? 0} in the room
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1">
+            <span className="rounded-full bg-white/10 px-3 py-1 whitespace-nowrap">
               {data.counts.ideas} ideas · {data.counts.decisions} decisions · {data.counts.tasks} tasks
             </span>
             <ButtonLink
               to={`/sessions/${data.id}`}
               variant="ghost"
               size="sm"
-              className="text-white hover:bg-white/10"
+              className="whitespace-nowrap text-white hover:bg-white/10"
             >
               Leave
             </ButtonLink>
@@ -214,7 +222,7 @@ export function RunModePage() {
           const current = position === index;
           const shared = { key: entry.key, className: "" };
           const classes =
-            "flex-1 rounded-xl px-3 py-3 text-sm font-medium " +
+            "flex-1 rounded-xl px-2 py-3 text-xs font-medium whitespace-nowrap sm:px-3 sm:text-sm " +
             (current
               ? "bg-ember-500 text-ink-900"
               : position < index

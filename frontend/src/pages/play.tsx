@@ -331,7 +331,7 @@ function ScoreChip({ data }: { data: GamePlay }) {
   const me = useMe();
   const mine = data.scores.find((row) => row.user_id === me.data?.user.id);
   return (
-    <span className="rounded-full bg-white/10 px-3 py-1 text-sm">
+    <span className="rounded-full bg-white/10 px-3 py-1 text-sm whitespace-nowrap">
       {mine ? `You: ${mine.points} points` : "You: no points yet"}
     </span>
   );
@@ -353,7 +353,7 @@ function PlayerShell({ data, children }: { data: GamePlay; children: ReactNode }
           </div>
           <div className="flex items-center gap-2">
             {data.total > 0 ? (
-              <span className="rounded-full bg-white/10 px-3 py-1 text-sm">
+              <span className="rounded-full bg-white/10 px-3 py-1 text-sm whitespace-nowrap">
                 {data.index + 1} of {data.total}
               </span>
             ) : null}
@@ -535,7 +535,7 @@ function HostScreen({ data }: { data: GamePlay }) {
             <h1 className="text-2xl font-semibold sm:text-3xl">{data.game.name}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-white/10 px-4 py-2 text-lg font-medium">
+            <span className="rounded-full bg-white/10 px-4 py-2 text-lg font-medium whitespace-nowrap">
               Question {data.index + 1} of {data.total}
             </span>
             <ButtonLink

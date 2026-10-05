@@ -59,12 +59,12 @@ export function AppLayout() {
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <NavLink
             to="/"
-            className="flex items-center gap-2 text-base font-semibold tracking-tight text-ember-700"
+            className="flex shrink-0 items-center gap-2 text-base font-semibold tracking-tight text-ember-700"
           >
             <img src="/mshikaki-mark.png" alt="" aria-hidden className="size-9" />
             MSHIKAKI
           </NavLink>
-          <span className="hidden truncate text-sm text-ink-600 sm:inline">
+          <span className="hidden min-w-0 truncate text-sm text-ink-600 sm:block">
             {me.data?.team.name}
           </span>
           {live ? (
@@ -72,12 +72,17 @@ export function AppLayout() {
               to={`/sessions/${live.id}/run`}
               size="sm"
               variant="secondary"
-              className="ml-1 max-w-[12rem] truncate"
+              // The chip gives way first: it shrinks and ellipsises rather than
+              // pushing the header wider than the phone. `truncate` has to sit
+              // on the text itself, not on the flex container, or a long meeting
+              // name is clipped through the middle instead of ending in "…".
+              className="ml-1 min-w-0 max-w-[8rem] gap-1 sm:max-w-[12rem]"
             >
-              <span aria-hidden>●</span> Live: {live.title}
+              <span aria-hidden className="shrink-0">●</span>
+              <span className="truncate">Live: {live.title}</span>
             </ButtonLink>
           ) : null}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <div className="relative hidden sm:block">
               <Input
                 className="h-9 w-48"

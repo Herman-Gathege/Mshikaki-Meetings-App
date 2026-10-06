@@ -49,4 +49,16 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ember-500;
   }
+
+  /*
+   * The list a <select> opens is drawn by the browser, on a light surface, and
+   * it does not inherit the page's dark theme. Left alone, an option inside a
+   * dark screen renders white on white: you cannot read what you are picking
+   * until the pointer happens to hover a row. State the colours once, here.
+   */
+  select option {
+    background-color: #ffffff;
+    color: var(--color-ink-900);
+  }
+
 }

@@ -9,14 +9,25 @@
  * Mshikaki before a meeting should know what to do without reading anything twice.
  */
 
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useMarkAttendance, useSessionParticipants, useSessions, useToday } from "@/api/hooks";
+import {
+  useAddParticipant,
+  useMarkAttendance,
+  useMembers,
+  useMe,
+  useSessionParticipants,
+  useSessions,
+  useToday,
+} from "@/api/hooks";
+import { toast } from "@/components/toast";
+import type { Participant } from "@/api/types";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { StatusBadge } from "@/components/badges";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/states";
-import { ButtonLink, Card } from "@/components/ui/kit";
+import { Button, ButtonLink, Card, Select } from "@/components/ui/kit";
 import { formatDateTime, formatRelative, isOverdue } from "@/lib/dates";
 
 export function TodayPage() {
@@ -204,7 +215,20 @@ function AttendanceLine({ sessionId }: { sessionId: string }) {
 
 function AttendanceCard({ sessionId }: { sessionId: string }) {
   const participants = useSessionParticipants(sessionId);
+  const members = useMembers();
+  const me = useMe();
   const mark = useMarkAttendance(sessionId);
+  const add = useAddParticipant(sessionId);
+  const [missing, setMissing] = useState("");
+
+  // Somebody who is in the room but was never recorded: an account made before
+  // the join fix, or a phone that never opened the code. The facilitator can put
+  // them in the meeting from here.
+  const room = participants.data?.items ?? [];
+  const canManage = ["owner", "admin", "facilitator"].includes(me.data?.role ?? "");
+  const elsewhere = (members.data?.items ?? []).filter(
+    (member) => !room.some((participant) => participant.user_id === member.user_id),
+  );
 
   return (
     <Card className="mb-6">
@@ -213,7 +237,7 @@ function AttendanceCard({ sessionId }: { sessionId: string }) {
       </h2>
       <p className="mb-3 text-sm text-ink-600">Tap a name as people arrive.</p>
       <ul className="flex flex-wrap gap-2">
-        {(participants.data?.items ?? []).map((participant) => (
+        {room.map((participant) => (
           <li key={participant.id}>
             <button
               type="button"
@@ -237,6 +261,55 @@ function AttendanceCard({ sessionId }: { sessionId: string }) {
           </li>
         ))}
       </ul>
+
+      {canManage && elsewhere.length > 0 ? (
+        <div className="mt-4 border-t border-ink-200 pt-3">
+          <p className="text-sm text-ink-600">
+            Somebody here whose name is not on the list? Add them to this meeting.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Select
+              className="w-56"
+              aria-label="Add somebody to this meeting"
+              value={missing}
+              onChange={(event) => setMissing(event.target.value)}
+            >
+              <option value="">Pick a person</option>
+              {elsewhere.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {member.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              disabled={!missing || add.isPending || mark.isPending}
+              onClick={() => {
+                const member = elsewhere.find((row) => row.user_id === missing);
+                if (!member) return;
+                void add
+                  .mutateAsync({ user_id: member.user_id, role: "participant" })
+                  .then((result: unknown) => {
+                    // Adding somebody who is standing here means they are present,
+                    // so tick them in the same breath.
+                    const items = (result as { items?: Participant[] })?.items ?? [];
+                    const theirs = items.find((row) => row.user_id === member.user_id);
+                    if (theirs) {
+                      return mark.mutateAsync({ participantId: theirs.id, attended: true });
+                    }
+                    return undefined;
+                  })
+                  .then(() => {
+                    setMissing("");
+                    toast(`✅ ${member.name} is in this meeting now`);
+                  })
+                  .catch(() => toast("Only the facilitator can add somebody here"));
+              }}
+            >
+              {add.isPending ? "Adding…" : "Add to the meeting"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </Card>
   );
 }

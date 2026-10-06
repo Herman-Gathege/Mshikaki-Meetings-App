@@ -1214,7 +1214,7 @@ function AgendaStep({
                         <>
                           <select
                             aria-label="Who has this note"
-                            className="rounded-lg bg-white/10 px-2 py-1 text-white"
+                            className="rounded-lg bg-white px-2 py-1 text-ink-900"
                             value={row.assignee_id ?? ""}
                             onChange={(event) =>
                               void updateNote.mutateAsync({
@@ -1233,7 +1233,7 @@ function AgendaStep({
                           </select>
                           <select
                             aria-label="Where this note got to"
-                            className="rounded-lg bg-white/10 px-2 py-1 text-white"
+                            className="rounded-lg bg-white px-2 py-1 text-ink-900"
                             value={row.status}
                             onChange={(event) =>
                               void updateNote.mutateAsync({
